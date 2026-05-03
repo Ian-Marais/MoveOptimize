@@ -68,6 +68,7 @@
     boxes: [],
     layout: [],
     meta: {
+      availableBoxNumbers: [],
       nextBoxNumber: 1,
       nextCategoryNumber: 1
     }
@@ -83,6 +84,10 @@
     .replaceAll("'", "&#039;");
 
   const byOrder = (left, right) => (left.order ?? 0) - (right.order ?? 0) || (left.createdAt ?? 0) - (right.createdAt ?? 0);
+  const extractBoxNumber = (name = "") => {
+    const match = /^Box\s+(\d+)$/i.exec(String(name).trim());
+    return match ? Number.parseInt(match[1], 10) : null;
+  };
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
@@ -135,6 +140,7 @@
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
     state.meta = state.meta || { nextBoxNumber: 1, nextCategoryNumber: 1 };
+    state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
     state.meta.nextCategoryNumber = Math.max(
       Number.isFinite(state.meta.nextCategoryNumber) ? state.meta.nextCategoryNumber : 1,
       state.categories.length + 1
@@ -142,15 +148,38 @@
     state.categoriesVisible = state.categoriesVisible !== false;
 
     const categoryIds = new Set(state.categories.map((category) => category.id));
-    const boxIds = new Set(state.boxes.map((box) => box.id));
+    const usedBoxNumbers = new Set();
+    let inferredNextBoxNumber = 1;
 
     state.boxes.forEach((box, index) => {
       if (box.categoryId && !categoryIds.has(box.categoryId)) {
         box.categoryId = null;
       }
+
+      let boxNumber = Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
+      if (!boxNumber || usedBoxNumbers.has(boxNumber)) {
+        while (usedBoxNumbers.has(inferredNextBoxNumber)) {
+          inferredNextBoxNumber += 1;
+        }
+        boxNumber = inferredNextBoxNumber;
+      }
+
+      box.number = boxNumber;
+      usedBoxNumbers.add(boxNumber);
+      inferredNextBoxNumber = Math.max(inferredNextBoxNumber, boxNumber + 1);
       box.order = Number.isFinite(box.order) ? box.order : (index + 1) * 1000;
       box.name = box.name || `Box ${index + 1}`;
     });
+
+    state.meta.availableBoxNumbers = [...new Set(
+      state.meta.availableBoxNumbers
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => Number.isInteger(value) && value > 0 && !usedBoxNumbers.has(value))
+    )].sort((left, right) => left - right);
+    state.meta.nextBoxNumber = Math.max(
+      Number.isFinite(state.meta.nextBoxNumber) ? state.meta.nextBoxNumber : 1,
+      inferredNextBoxNumber
+    );
 
     state.categories.forEach((category, index) => {
       category.name = category.name || `Category ${index + 1}`;
@@ -464,6 +493,36 @@
     });
   }
 
+  function claimNextBoxNumber() {
+    const availableNumber = state.meta.availableBoxNumbers.shift();
+    if (Number.isInteger(availableNumber) && availableNumber > 0) {
+      return availableNumber;
+    }
+
+    const boxNumber = Number.isFinite(state.meta.nextBoxNumber) && state.meta.nextBoxNumber > 0 ? state.meta.nextBoxNumber : 1;
+    state.meta.nextBoxNumber = boxNumber + 1;
+    return boxNumber;
+  }
+
+  function recycleBoxNumbers(boxIds) {
+    const remainingBoxIds = new Set(state.boxes.filter((box) => !boxIds.includes(box.id)).map((box) => box.id));
+    const remainingNumbers = new Set(
+      state.boxes
+        .filter((box) => remainingBoxIds.has(box.id))
+        .map((box) => box.number)
+        .filter((value) => Number.isInteger(value) && value > 0)
+    );
+    const recycledNumbers = boxIds
+      .map(findBox)
+      .map((box) => box?.number)
+      .filter((value) => Number.isInteger(value) && value > 0 && !remainingNumbers.has(value));
+
+    state.meta.availableBoxNumbers = [...new Set([
+      ...state.meta.availableBoxNumbers,
+      ...recycledNumbers
+    ])].sort((left, right) => left - right);
+  }
+
   function moveFollowingRootBoxIntoCategory(insertIndex, categoryId) {
     const nextRef = state.layout[insertIndex];
     if (nextRef?.type !== "box") {
@@ -531,10 +590,12 @@
   }
 
   function addBox(context) {
+    const boxNumber = claimNextBoxNumber();
     const id = uid("box");
     const box = {
       id,
-      name: `Box ${state.meta.nextBoxNumber++}`,
+      number: boxNumber,
+      name: `Box ${boxNumber}`,
       categoryId: null,
       order: Date.now(),
       createdAt: Date.now(),
@@ -580,6 +641,7 @@
   }
 
   function removeBoxes(boxIds) {
+    recycleBoxNumbers(boxIds);
     boxIds.forEach(revokeBoxImage);
     state.boxes = state.boxes.filter((box) => !boxIds.includes(box.id));
     state.layout = state.layout.filter((ref) => !(ref.type === "box" && boxIds.includes(ref.id)));
