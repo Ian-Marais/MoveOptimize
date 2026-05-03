@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 480" role="img" aria-labelledby="title desc">
+  <title id="title">Carton box placeholder</title>
+  <desc id="desc">A simple cardboard moving box illustration.</desc>
+  <rect width="720" height="480" rx="22" fill="#eef5fb"/>
+  <path d="M165 178 360 82l195 96-195 96-195-96Z" fill="#c99655"/>
+  <path d="M165 178v178l195 96V274l-195-96Z" fill="#b97f3e"/>
+  <path d="M555 178v178l-195 96V274l195-96Z" fill="#d7a464"/>
+  <path d="M260 130 455 226v58L260 188v-58Z" fill="#e4bc80" opacity=".9"/>
+  <path d="M360 274v178" stroke="#8d5a27" stroke-width="12" stroke-linecap="round"/>
+  <path d="M212 318h96M212 350h126" stroke="#744a22" stroke-width="12" stroke-linecap="round" opacity=".55"/>
+</svg>

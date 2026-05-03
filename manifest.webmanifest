@@ -1,0 +1,19 @@
+{
+  "name": "MoveOptimize",
+  "short_name": "MoveOptimize",
+  "description": "Photograph, group, and find packed boxes faster when moving house.",
+  "start_url": "/?page=home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8fb",
+  "theme_color": "#0f6fbd",
+  "icons": [
+    {
+      "src": "/assets/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

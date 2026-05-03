@@ -1,0 +1,17 @@
+{
+  "name": "moveoptimize",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local-first moving organizer for finding packed items faster.",
+  "type": "module",
+  "scripts": {
+    "start": "roselt serve --host 127.0.0.1 --port 5173",
+    "dev": "roselt serve --host 127.0.0.1 --port 5173",
+    "serve": "roselt serve",
+    "vendor": "mkdir -p assets/vendor/roselt assets/vendor/bootstrap-icons && cp node_modules/roselt-js/dist/roselt.js assets/vendor/roselt/roselt.js && cp node_modules/bootstrap-icons/font/bootstrap-icons.css assets/vendor/bootstrap-icons/bootstrap-icons.css && cp -R node_modules/bootstrap-icons/font/fonts assets/vendor/bootstrap-icons/fonts"
+  },
+  "dependencies": {
+    "bootstrap-icons": "latest",
+    "roselt-js": "latest"
+  }
+}
