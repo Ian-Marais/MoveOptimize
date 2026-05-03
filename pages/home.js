@@ -40,6 +40,8 @@
   const confirmMessage = root.querySelector("#confirmMessage");
   const photoModal = root.querySelector("#photoModal");
   const photoPreview = root.querySelector("#photoPreview");
+  const lightboxModal = root.querySelector("#lightboxModal");
+  const lightboxImage = root.querySelector("#lightboxImage");
   const categoryDeleteModal = root.querySelector("#categoryDeleteModal");
   const categoryDeleteSubtitle = root.querySelector("#categoryDeleteSubtitle");
   const overlayBoxList = root.querySelector("#overlayBoxList");
@@ -320,6 +322,7 @@
     return `<article class="box-card ${selected ? "selected" : ""}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
         <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(box.name)} photo" loading="lazy">
+        <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
         <button type="button" class="icon-button image-action camera" data-action="camera" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Take box photo"><i class="bi bi-camera-fill"></i></button>
         <button type="button" class="icon-button image-action gallery" data-action="gallery" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Choose box photo"><i class="bi bi-images"></i></button>
         <button type="button" class="icon-button image-action clear" data-action="clear-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Clear box photo"><i class="bi bi-x-lg"></i></button>
@@ -672,6 +675,23 @@
     pendingPhoto = null;
   }
 
+  function openImageLightbox(boxId) {
+    const box = findBox(boxId);
+    if (!box) {
+      return;
+    }
+
+    lightboxImage.src = getBoxImageSrc(box);
+    lightboxImage.alt = `${box.name} enlarged image`;
+    lightboxModal.hidden = false;
+  }
+
+  function closeImageLightbox() {
+    lightboxModal.hidden = true;
+    lightboxImage.removeAttribute("src");
+    lightboxImage.alt = "";
+  }
+
   function openCategoryDeletion(categoryId) {
     if (deleteCategoryIfEmpty(categoryId)) {
       return;
@@ -873,7 +893,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "camera", "gallery", "clear-photo", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "expand-photo", "camera", "gallery", "clear-photo", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -891,6 +911,11 @@
 
     if (action === "new-box") {
       addBox(context);
+      return;
+    }
+
+    if (action === "expand-photo") {
+      openImageLightbox(actionElement.dataset.boxId);
       return;
     }
 
@@ -952,6 +977,11 @@
       deletionCategoryId = null;
       overlaySelectedIds.clear();
       categoryDeleteModal.hidden = true;
+      return;
+    }
+
+    if (action === "close-lightbox") {
+      closeImageLightbox();
       return;
     }
 
@@ -1173,6 +1203,18 @@
 
       if (action === "cancel") {
         closePhotoPreview();
+      }
+    });
+
+    lightboxModal.addEventListener("click", (event) => {
+      if (event.target === lightboxModal) {
+        closeImageLightbox();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !lightboxModal.hidden) {
+        closeImageLightbox();
       }
     });
   }

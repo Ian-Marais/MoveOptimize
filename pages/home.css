@@ -360,6 +360,15 @@ button {
   bottom: 8px;
 }
 
+.image-action.enlarge {
+  left: 8px;
+  top: 8px;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  height: 34px;
+}
+
 .image-action.gallery {
   right: 8px;
   bottom: 8px;
@@ -432,7 +441,8 @@ button {
 }
 
 #confirmModal,
-#photoModal {
+#photoModal,
+#lightboxModal {
   z-index: 70;
 }
 
@@ -494,6 +504,45 @@ button {
   object-fit: contain;
   border-radius: 6px;
   background: #eef3f8;
+}
+
+.lightbox-backdrop {
+  background: rgba(15, 23, 34, 0.22);
+}
+
+.lightbox-panel {
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lightbox-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  height: 36px;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(15, 23, 34, 0.74);
+  color: #fff;
 }
 
 .category-delete-panel {
