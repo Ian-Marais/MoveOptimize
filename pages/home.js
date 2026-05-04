@@ -388,7 +388,25 @@
   function cleanupDragArtifacts() {
     document.querySelectorAll(".drag-ghost").forEach((ghost) => ghost.remove());
     document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
+    document.querySelectorAll(".drag-source-hidden").forEach((element) => element.classList.remove("drag-source-hidden"));
+    hideRevealedCategoryHandles();
     root.classList.remove("category-dragging");
+  }
+
+  function revealCategoryHandle(frame) {
+    if (!frame) {
+      return;
+    }
+    hideRevealedCategoryHandles(frame);
+    frame.classList.add("touch-handle-visible");
+  }
+
+  function hideRevealedCategoryHandles(exceptFrame = null) {
+    organizerList.querySelectorAll(".category-drag-frame.touch-handle-visible").forEach((frame) => {
+      if (frame !== exceptFrame) {
+        frame.classList.remove("touch-handle-visible");
+      }
+    });
   }
 
   function collapseCategoriesForDrag() {
@@ -526,6 +544,11 @@
       <div class="category-header" data-category-id="${escapeHtml(category.id)}">
         <button type="button" class="icon-button collapse-toggle" data-action="toggle-category" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Toggle category"><i class="bi ${collapsed ? "bi-chevron-right" : "bi-chevron-down"}"></i></button>
         <div class="category-drag-frame${duplicateInputClass}" data-category-id="${escapeHtml(category.id)}" aria-label="Drag category">
+          <div class="category-drag-hotspot" data-category-id="${escapeHtml(category.id)}" data-skip-select="true">
+            <button type="button" class="category-drag-handle" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Drag category">
+              <span aria-hidden="true">•••</span>
+            </button>
+          </div>
           <input type="text" class="category-name${duplicateInputClass}" value="${escapeHtml(category.name)}" data-action="category-name" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Category name">
         </div>
         <button type="button" class="delete-category" data-action="delete-category" data-category-id="${escapeHtml(category.id)}" data-skip-select="true">Delete</button>
@@ -604,7 +627,7 @@
       : "";
 
     organizerList.innerHTML = hasContent
-      ? `${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}`
+      ? `${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}${renderInsertLine({ scope: "root-end" }, { forceActive: true, extraClass: "root-trailing" })}`
       : `${emptyMessage}${renderEmptyRootInsertLines()}`;
     bulkActions.hidden = selectedBoxIds.size === 0;
     renderCategoryDeleteOverlay();
@@ -801,6 +824,7 @@
   }
 
   function addBox(context) {
+    const insertionContext = resolveBoxInsertionContext(context);
     const boxNumber = claimNextBoxNumber();
     const id = uid("box");
     const box = {
@@ -816,12 +840,12 @@
 
     state.boxes.push(box);
 
-    if (state.categoriesVisible && (context.scope === "category" || context.scope === "category-start") && context.categoryId) {
-      box.categoryId = context.categoryId;
-      insertBoxesInCategory([id], context.categoryId, context.scope === "category" ? context.afterId : null);
+    if (state.categoriesVisible && (insertionContext.scope === "category" || insertionContext.scope === "category-start") && insertionContext.categoryId) {
+      box.categoryId = insertionContext.categoryId;
+      insertBoxesInCategory([id], insertionContext.categoryId, insertionContext.scope === "category" ? insertionContext.afterId : null);
     } else {
       box.categoryId = null;
-      const insertIndex = state.categoriesVisible ? getRootInsertIndex(context) : state.layout.length;
+      const insertIndex = state.categoriesVisible ? getRootInsertIndex(insertionContext) : state.layout.length;
       insertRootRef({ type: "box", id }, insertIndex);
     }
 
@@ -834,6 +858,25 @@
       renderOrganizer();
       focusBox(id);
     }, 0);
+  }
+
+  function resolveBoxInsertionContext(context) {
+    if (!state.categoriesVisible || context.scope !== "root-end") {
+      return context;
+    }
+
+    const lastRef = state.layout[state.layout.length - 1];
+    if (lastRef?.type !== "category") {
+      return context;
+    }
+
+    const categoryId = lastRef.id;
+    const categoryBoxes = boxesForCategory(categoryId);
+    const lastBox = categoryBoxes[categoryBoxes.length - 1];
+
+    return lastBox
+      ? { scope: "category", categoryId, afterType: "box", afterId: lastBox.id }
+      : { scope: "category-start", categoryId, afterType: "category", afterId: categoryId };
   }
 
   function focusCategory(categoryId) {
@@ -1095,21 +1138,22 @@
     if (type === "category") {
       collapseCategoriesForDrag();
       renderOrganizer();
+      organizerList.querySelector(`.category-section[data-category-id="${CSS.escape(id)}"]`)?.classList.add("drag-source-hidden");
     }
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
     document.body.classList.add("drag-no-select");
 
     const ids = [id];
-    const ghost = document.createElement("div");
-    ghost.className = "drag-ghost";
-    ghost.textContent = type === "box" ? `${ids.length} ${ids.length === 1 ? "box" : "boxes"}` : findCategory(id)?.name || "Category";
-    document.body.appendChild(ghost);
+    const ghostState = createDragGhost(type, id, event);
+    document.body.appendChild(ghostState.ghost);
 
     dragState = {
       type,
       ids,
-      ghost,
+      ghost: ghostState.ghost,
+      offsetX: ghostState.offsetX,
+      offsetY: ghostState.offsetY,
       dropLine: null,
       dropContext: null,
       x: event.clientX,
@@ -1176,12 +1220,47 @@
     return { line: null, context: null };
   }
 
+  function createDragGhost(type, id, event) {
+    if (type === "category") {
+      const categoryHeader = organizerList.querySelector(`.category-header[data-category-id="${CSS.escape(id)}"]`);
+      if (categoryHeader) {
+        const headerRect = categoryHeader.getBoundingClientRect();
+        const ghost = document.createElement("div");
+        ghost.className = "drag-ghost drag-ghost-category";
+        ghost.style.width = `${Math.round(headerRect.width)}px`;
+
+        const headerClone = categoryHeader.cloneNode(true);
+        headerClone.querySelectorAll("input").forEach((input) => {
+          input.value = input.value;
+          input.setAttribute("value", input.value);
+        });
+        ghost.appendChild(headerClone);
+
+        return {
+          ghost,
+          offsetX: event.clientX - headerRect.left,
+          offsetY: event.clientY - headerRect.top
+        };
+      }
+    }
+
+    const ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.textContent = type === "box" ? `1 box` : findCategory(id)?.name || "Category";
+
+    return {
+      ghost,
+      offsetX: -14,
+      offsetY: -14
+    };
+  }
+
   function moveGhost(x, y) {
     if (!dragState) {
       return;
     }
 
-    dragState.ghost.style.transform = `translate(${x + 14}px, ${y + 14}px)`;
+    dragState.ghost.style.transform = `translate(${x - dragState.offsetX}px, ${y - dragState.offsetY}px)`;
 
     if (y < 80) {
       window.scrollBy(0, -18);
@@ -1504,6 +1583,11 @@
     });
 
     root.addEventListener("pointerdown", (event) => {
+      const categoryDragFrame = event.target.closest(".category-drag-frame");
+      if (!categoryDragFrame) {
+        hideRevealedCategoryHandles();
+      }
+
       if (event.target.closest(".insert-line")) {
         return;
       }
@@ -1512,10 +1596,21 @@
         return;
       }
 
-      const categoryDragFrame = event.target.closest(".category-drag-frame");
-      if (categoryDragFrame) {
-        startPress(event, "category", categoryDragFrame.dataset.categoryId);
+      const categoryDragHandle = event.target.closest(".category-drag-handle");
+      if (categoryDragHandle) {
+        event.preventDefault();
+        startPress(event, "category", categoryDragHandle.dataset.categoryId);
         return;
+      }
+
+      const categoryDragHotspot = event.target.closest(".category-drag-hotspot");
+      if (categoryDragHotspot && event.pointerType && event.pointerType !== "mouse") {
+        const hotspotFrame = categoryDragHotspot.closest(".category-drag-frame");
+        if (hotspotFrame && !hotspotFrame.classList.contains("touch-handle-visible")) {
+          event.preventDefault();
+          revealCategoryHandle(hotspotFrame);
+          return;
+        }
       }
 
       const boxCard = event.target.closest(".box-card");

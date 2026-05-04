@@ -166,37 +166,106 @@ button {
 
 .category-header {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) minmax(74px, 96px);
+  grid-template-columns: 40px minmax(0, 1fr) minmax(68px, 88px);
   align-items: stretch;
-  min-height: 48px;
-  margin-top: 8px;
+  min-height: 40px;
+  margin-top: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   background: #ffffff;
   box-shadow: 0 4px 14px rgba(20, 35, 55, 0.06);
   touch-action: manipulation;
 }
 
 .category-drag-frame {
+  position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
-  margin: 6px;
-  padding: 0 10px;
+  margin: 4px;
+  padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 5px;
   background: linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%);
+  overflow: visible;
+}
+
+.category-drag-hotspot {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 48px;
+  height: 22px;
+  transform: translate(-50%, -35%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 3;
+}
+
+.category-drag-frame:active,
+.category-drag-handle:active {
+  cursor: grabbing;
+}
+
+.category-drag-handle {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 16px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  box-shadow: 0 8px 18px rgba(20, 35, 55, 0.12);
+  transform: translateY(0) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease, color 140ms ease, border-color 140ms ease;
+  z-index: 2;
   cursor: grab;
 }
 
-.category-drag-frame:active {
-  cursor: grabbing;
+.category-drag-handle span {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  transform: translateY(-1px);
+}
+
+.category-header:hover .category-drag-handle,
+.category-drag-frame.touch-handle-visible .category-drag-handle,
+.category-drag-handle:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.category-header:hover .category-drag-handle,
+.category-drag-frame.touch-handle-visible .category-drag-handle {
+  border-color: #b9c7d8;
+  color: var(--blue-dark);
+}
+
+.category-drag-handle:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .category-dragging .category-boxes,
 .category-dragging .box-card {
   display: none;
+}
+
+.category-section.drag-source-hidden {
+  visibility: hidden;
 }
 
 .icon-button,
@@ -242,6 +311,17 @@ button {
 
 .category-name {
   padding: 0;
+  font-size: 0.96rem;
+  line-height: 1.1;
+}
+
+.category-header .collapse-toggle,
+.category-header .delete-category {
+  min-height: 40px;
+}
+
+.category-header .delete-category {
+  font-size: 0.92rem;
 }
 
 .duplicate-category {
@@ -256,6 +336,12 @@ button {
 .category-drag-frame.duplicate-category-name {
   border-color: var(--warning);
   background: #fff8ea;
+}
+
+.category-drag-frame.duplicate-category-name .category-drag-handle {
+  border-color: #e0b258;
+  background: #fff8ea;
+  color: var(--warning);
 }
 
 .delete-category {
@@ -739,6 +825,36 @@ button {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
+.drag-ghost-category {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  box-shadow: none;
+}
+
+.drag-ghost-category .category-header {
+  margin-top: 0;
+  box-shadow: 0 20px 40px rgba(20, 35, 55, 0.22);
+}
+
+.drag-ghost-category .category-drag-handle {
+  opacity: 1;
+  pointer-events: none;
+  transform: translateY(0) scale(1);
+}
+
+.drag-ghost-category .category-name,
+.drag-ghost-category .delete-category,
+.drag-ghost-category .collapse-toggle {
+  pointer-events: none;
+}
+
+.drag-ghost-category .category-name {
+  caret-color: transparent;
+}
+
 @media (max-width: 520px) {
   .app-toolbar {
     align-items: flex-start;
@@ -770,6 +886,7 @@ button {
     width: calc(100vw - 24px);
   }
 }
+
 
 @media (min-width: 760px) {
   .workspace {
