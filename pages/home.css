@@ -333,13 +333,14 @@ button {
 }
 
 .box-card {
+  --box-scale: 1;
   display: grid;
-  grid-template-columns: minmax(112px, 36%) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: calc(12px + ((var(--box-scale) - 1) * 18px));
   align-items: stretch;
-  min-height: 132px;
+  min-height: calc(132px + ((var(--box-scale) - 1) * 124px));
   margin: 8px 0 0;
-  padding: 10px;
+  padding: calc(10px + ((var(--box-scale) - 1) * 6px));
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -353,9 +354,17 @@ button {
   box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16), 0 8px 22px rgba(20, 35, 55, 0.12);
 }
 
+.box-card.universal-source {
+  border-color: #6f9dd2;
+  box-shadow: 0 0 0 3px rgba(111, 157, 210, 0.14), 0 8px 22px rgba(20, 35, 55, 0.12);
+}
+
 .box-image-shell {
   position: relative;
+  width: calc(220px + ((var(--box-scale) - 1) * 120px));
+  max-width: min(100%, calc(220px + ((var(--box-scale) - 1) * 120px)));
   min-width: 0;
+  min-height: calc(132px + ((var(--box-scale) - 1) * 108px));
   overflow: hidden;
   border-radius: 6px;
   background: #e9f0f7;
@@ -412,22 +421,68 @@ button {
 .box-details {
   display: grid;
   align-content: center;
-  gap: 8px;
+  gap: calc(8px + ((var(--box-scale) - 1) * 6px));
   min-width: 0;
 }
 
 .box-details input {
-  min-height: 44px;
-  padding: 0 10px;
+  min-height: calc(44px + ((var(--box-scale) - 1) * 8px));
+  padding: 0 calc(10px + ((var(--box-scale) - 1) * 4px));
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 1rem;
+  font-size: calc(1rem + ((var(--box-scale) - 1) * 0.1rem));
 }
 
 .box-details span {
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: calc(0.86rem + ((var(--box-scale) - 1) * 0.08rem));
   font-weight: 700;
+}
+
+.box-scale-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.box-scale-select-wrap,
+.box-scale-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.box-scale-select-wrap i {
+  color: var(--blue-dark);
+}
+
+.box-scale-select-wrap select {
+  min-width: 72px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+
+.box-scale-select-wrap select:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.box-scale-toggle input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
 }
 
 .bulk-actions {
@@ -694,9 +749,14 @@ button {
   }
 
   .box-card {
-    grid-template-columns: 220px minmax(0, 1fr);
-    min-height: 178px;
+    grid-template-columns: max-content minmax(0, 1fr);
+    min-height: calc(178px + ((var(--box-scale) - 1) * 118px));
     padding: 12px;
+  }
+
+  .box-image-shell {
+    width: calc(220px + ((var(--box-scale) - 1) * 120px));
+    max-width: min(100%, calc(220px + ((var(--box-scale) - 1) * 120px)));
   }
 
   .box-details input {
@@ -714,7 +774,8 @@ button {
     width: min(1240px, 100%);
   }
 
-  .box-card {
-    grid-template-columns: 260px minmax(0, 1fr);
+  .box-image-shell {
+    width: calc(260px + ((var(--box-scale) - 1) * 140px));
+    max-width: min(100%, calc(260px + ((var(--box-scale) - 1) * 140px)));
   }
 }

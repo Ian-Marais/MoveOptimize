@@ -28,6 +28,7 @@
   const STATE_KEY = "state";
   const PLACEHOLDER_IMAGE = "/assets/box-placeholder.svg";
   const LONG_PRESS_MS = 500;
+  const BOX_SCALE_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
 
   const organizerList = root.querySelector("#organizerList");
   const categoryToggle = root.querySelector("#categoryToggle");
@@ -71,7 +72,8 @@
       availableCategoryNumbers: [],
       availableBoxNumbers: [],
       nextBoxNumber: 1,
-      nextCategoryNumber: 1
+      nextCategoryNumber: 1,
+      universalBoxScaleSourceId: null
     }
   });
 
@@ -96,6 +98,10 @@
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
+  const normalizeBoxScale = (value) => {
+    const parsed = Number.parseFloat(value);
+    return BOX_SCALE_OPTIONS.includes(parsed) ? parsed : 1;
+  };
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -144,9 +150,10 @@
     state.categories = Array.isArray(state.categories) ? state.categories : [];
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
-    state.meta = state.meta || { availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1 };
+    state.meta = state.meta || { availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
     state.meta.availableCategoryNumbers = Array.isArray(state.meta.availableCategoryNumbers) ? state.meta.availableCategoryNumbers : [];
     state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
+    state.meta.universalBoxScaleSourceId = typeof state.meta.universalBoxScaleSourceId === "string" ? state.meta.universalBoxScaleSourceId : null;
     state.categoriesVisible = state.categoriesVisible !== false;
 
     const categoryIds = new Set(state.categories.map((category) => category.id));
@@ -173,7 +180,12 @@
       inferredNextBoxNumber = Math.max(inferredNextBoxNumber, boxNumber + 1);
       box.order = Number.isFinite(box.order) ? box.order : (index + 1) * 1000;
       box.name = box.name || `Box ${index + 1}`;
+      box.viewScale = normalizeBoxScale(box.viewScale);
     });
+
+    if (state.meta.universalBoxScaleSourceId && !findBox(state.meta.universalBoxScaleSourceId)) {
+      state.meta.universalBoxScaleSourceId = null;
+    }
 
     state.meta.availableBoxNumbers = [...new Set(
       state.meta.availableBoxNumbers
@@ -372,6 +384,12 @@
     </div>`;
   }
 
+  function cleanupDragArtifacts() {
+    document.querySelectorAll(".drag-ghost").forEach((ghost) => ghost.remove());
+    document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
+    root.classList.remove("category-dragging");
+  }
+
   function getBoxImageSrc(box) {
     if (!box.image?.blob) {
       return PLACEHOLDER_IMAGE;
@@ -419,11 +437,28 @@
     );
   }
 
+  function getUniversalScaleSourceBox() {
+    return state.meta.universalBoxScaleSourceId ? findBox(state.meta.universalBoxScaleSourceId) : null;
+  }
+
+  function getEffectiveBoxScale(box) {
+    const universalSourceBox = getUniversalScaleSourceBox();
+    return universalSourceBox ? normalizeBoxScale(universalSourceBox.viewScale) : normalizeBoxScale(box.viewScale);
+  }
+
+  function renderBoxScaleOptions(selectedScale) {
+    return BOX_SCALE_OPTIONS.map((scale) => `<option value="${scale}" ${scale === selectedScale ? "selected" : ""}>${scale}x</option>`).join("");
+  }
+
   function renderBox(box, context, options = {}) {
     const selected = selectedBoxIds.has(box.id);
     const category = box.categoryId ? findCategory(box.categoryId) : null;
+    const boxScale = normalizeBoxScale(box.viewScale);
+    const effectiveScale = getEffectiveBoxScale(box);
+    const isUniversalSource = state.meta.universalBoxScaleSourceId === box.id;
+    const universalScaleLocked = Boolean(state.meta.universalBoxScaleSourceId && !isUniversalSource);
 
-    return `<article class="box-card ${selected ? "selected" : ""}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
+    return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
         <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(box.name)} photo" loading="lazy">
         <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
@@ -433,6 +468,18 @@
       </div>
       <div class="box-details">
         <input type="text" value="${escapeHtml(box.name)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name">
+        <div class="box-scale-controls">
+          <label class="box-scale-select-wrap">
+            <i class="bi bi-zoom-in"></i>
+            <select data-action="box-scale" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box size multiplier" ${universalScaleLocked ? "disabled" : ""}>
+              ${renderBoxScaleOptions(boxScale)}
+            </select>
+          </label>
+          <label class="box-scale-toggle">
+            <input type="checkbox" data-action="box-scale-universal" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" ${isUniversalSource ? "checked" : ""}>
+            <span>All boxes</span>
+          </label>
+        </div>
         <span>${escapeHtml(options.flat && category ? category.name : "Folder or Box")}</span>
       </div>
     </article>
@@ -488,6 +535,7 @@
 
   function renderOrganizer() {
     normalizeState();
+    cleanupDragArtifacts();
     categoryToggle.checked = state.categoriesVisible;
     const duplicateCategoryIds = getDuplicateCategoryIds();
 
@@ -738,7 +786,8 @@
       categoryId: null,
       order: Date.now(),
       createdAt: Date.now(),
-      image: null
+      image: null,
+      viewScale: 1
     };
 
     state.boxes.push(box);
@@ -783,6 +832,9 @@
     recycleBoxNumbers(boxIds);
     boxIds.forEach(revokeBoxImage);
     state.boxes = state.boxes.filter((box) => !boxIds.includes(box.id));
+    if (state.meta.universalBoxScaleSourceId && boxIds.includes(state.meta.universalBoxScaleSourceId)) {
+      state.meta.universalBoxScaleSourceId = null;
+    }
     state.layout = state.layout.filter((ref) => !(ref.type === "box" && boxIds.includes(ref.id)));
     selectedBoxIds = new Set([...selectedBoxIds].filter((id) => !boxIds.includes(id)));
     overlaySelectedIds = new Set([...overlaySelectedIds].filter((id) => !boxIds.includes(id)));
@@ -1003,6 +1055,9 @@
     if (pressState?.timer) {
       clearTimeout(pressState.timer);
     }
+    if (!dragState) {
+      cleanupDragArtifacts();
+    }
     pressState = null;
   }
 
@@ -1011,6 +1066,7 @@
       return;
     }
 
+    cleanupDragArtifacts();
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
 
@@ -1122,10 +1178,8 @@
 
     const currentDrag = dragState;
     const context = currentDrag.dropContext || (currentDrag.dropLine ? contextFromElement(currentDrag.dropLine) : null);
-    currentDrag.ghost.remove();
-    document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
+    cleanupDragArtifacts();
     dragState = null;
-    root.classList.remove("category-dragging");
     cancelPress();
 
     if (!context) {
@@ -1346,7 +1400,7 @@
       }
 
       const boxCard = event.target.closest(".box-card");
-      if (boxCard && !event.target.closest("[data-skip-select], button, input, label")) {
+      if (boxCard && !event.target.closest("[data-skip-select], button, input, label, select")) {
         const boxId = boxCard.dataset.boxId;
         if (selectedBoxIds.has(boxId)) {
           selectedBoxIds.delete(boxId);
@@ -1379,6 +1433,26 @@
           summary.textContent = "Saving box...";
         }
       }
+
+      if (target.dataset.action === "box-scale") {
+        const box = findBox(target.dataset.boxId);
+        if (box) {
+          box.viewScale = normalizeBoxScale(target.value);
+          scheduleSave();
+          renderOrganizer();
+        }
+      }
+    });
+
+    root.addEventListener("change", (event) => {
+      const target = event.target;
+
+      if (target.dataset.action === "box-scale-universal") {
+        const boxId = target.dataset.boxId;
+        state.meta.universalBoxScaleSourceId = target.checked ? boxId : (state.meta.universalBoxScaleSourceId === boxId ? null : state.meta.universalBoxScaleSourceId);
+        scheduleSave();
+        renderOrganizer();
+      }
     });
 
     root.addEventListener("keydown", (event) => {
@@ -1399,13 +1473,17 @@
         return;
       }
 
+      if (event.target.closest(".box-scale-controls")) {
+        return;
+      }
+
       const boxCard = event.target.closest(".box-card");
       if (boxCard) {
         startPress(event, "box", boxCard.dataset.boxId);
         return;
       }
 
-      if (event.target.closest("[data-skip-select], button, input, label")) {
+      if (event.target.closest("[data-skip-select], button, input, label, select")) {
         return;
       }
 
