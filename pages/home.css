@@ -32,6 +32,12 @@ body {
   background: var(--surface);
 }
 
+body.drag-no-select,
+body.drag-no-select * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -172,6 +178,22 @@ button {
   touch-action: manipulation;
 }
 
+.category-drag-frame {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%);
+  cursor: grab;
+}
+
+.category-drag-frame:active {
+  cursor: grabbing;
+}
+
 .category-dragging .category-boxes,
 .category-dragging .box-card {
   display: none;
@@ -219,7 +241,7 @@ button {
 }
 
 .category-name {
-  padding: 0 12px;
+  padding: 0;
 }
 
 .duplicate-category {
@@ -229,6 +251,11 @@ button {
 .duplicate-category-name {
   background: #fff8ea;
   color: var(--warning);
+}
+
+.category-drag-frame.duplicate-category-name {
+  border-color: var(--warning);
+  background: #fff8ea;
 }
 
 .delete-category {

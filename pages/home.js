@@ -62,6 +62,7 @@
   let pressState = null;
   let dragState = null;
   let suppressClick = false;
+  let categoryDragCollapseState = null;
 
   const emptyState = () => ({
     categoriesVisible: true,
@@ -390,6 +391,28 @@
     root.classList.remove("category-dragging");
   }
 
+  function collapseCategoriesForDrag() {
+    categoryDragCollapseState = new Map(
+      state.categories.map((category) => [category.id, category.collapsed])
+    );
+    state.categories.forEach((category) => {
+      category.collapsed = true;
+    });
+  }
+
+  function restoreCategoriesAfterDrag() {
+    if (!categoryDragCollapseState) {
+      return;
+    }
+
+    state.categories.forEach((category) => {
+      if (categoryDragCollapseState.has(category.id)) {
+        category.collapsed = categoryDragCollapseState.get(category.id);
+      }
+    });
+    categoryDragCollapseState = null;
+  }
+
   function getBoxImageSrc(box) {
     if (!box.image?.blob) {
       return PLACEHOLDER_IMAGE;
@@ -502,7 +525,9 @@
     return `<section class="category-section${duplicateClass}" data-category-id="${escapeHtml(category.id)}">
       <div class="category-header" data-category-id="${escapeHtml(category.id)}">
         <button type="button" class="icon-button collapse-toggle" data-action="toggle-category" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Toggle category"><i class="bi ${collapsed ? "bi-chevron-right" : "bi-chevron-down"}"></i></button>
-        <input type="text" class="category-name${duplicateInputClass}" value="${escapeHtml(category.name)}" data-action="category-name" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Category name">
+        <div class="category-drag-frame${duplicateInputClass}" data-category-id="${escapeHtml(category.id)}" aria-label="Drag category">
+          <input type="text" class="category-name${duplicateInputClass}" value="${escapeHtml(category.name)}" data-action="category-name" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Category name">
+        </div>
         <button type="button" class="delete-category" data-action="delete-category" data-category-id="${escapeHtml(category.id)}" data-skip-select="true">Delete</button>
       </div>
       ${renderInsertLine(headerContext)}
@@ -1066,8 +1091,14 @@
     }
 
     cleanupDragArtifacts();
+    window.getSelection?.()?.removeAllRanges();
+    if (type === "category") {
+      collapseCategoriesForDrag();
+      renderOrganizer();
+    }
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
+    document.body.classList.add("drag-no-select");
 
     const ids = [id];
     const ghost = document.createElement("div");
@@ -1179,11 +1210,14 @@
     const context = currentDrag.dropContext || (currentDrag.dropLine ? contextFromElement(currentDrag.dropLine) : null);
     cleanupDragArtifacts();
     dragState = null;
+    document.body.classList.remove("drag-no-select");
     cancelPress();
 
     if (!context) {
       if (currentDrag.type === "box") {
         selectedBoxIds.clear();
+      } else {
+        restoreCategoriesAfterDrag();
       }
       renderOrganizer();
       return;
@@ -1199,11 +1233,13 @@
 
     const confirmed = await askConfirm("Are you sure?");
     if (!confirmed) {
+      restoreCategoriesAfterDrag();
       renderOrganizer();
       return;
     }
 
     moveCategoryToContext(currentDrag.ids[0], context);
+    restoreCategoriesAfterDrag();
 
     scheduleSave();
     renderOrganizer();
@@ -1476,6 +1512,12 @@
         return;
       }
 
+      const categoryDragFrame = event.target.closest(".category-drag-frame");
+      if (categoryDragFrame) {
+        startPress(event, "category", categoryDragFrame.dataset.categoryId);
+        return;
+      }
+
       const boxCard = event.target.closest(".box-card");
       if (boxCard) {
         startPress(event, "box", boxCard.dataset.boxId);
@@ -1483,12 +1525,6 @@
       }
 
       if (event.target.closest("[data-skip-select], button, input, label, select")) {
-        return;
-      }
-
-      const categoryHeader = event.target.closest(".category-header");
-      if (categoryHeader) {
-        startPress(event, "category", categoryHeader.dataset.categoryId);
         return;
       }
     });
