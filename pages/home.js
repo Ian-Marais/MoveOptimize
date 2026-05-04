@@ -401,6 +401,18 @@
     organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(boxId)}"]`)?.classList.add("drag-source-hidden");
   }
 
+  function markDraggedBoxSourcesHidden(boxIds) {
+    boxIds.forEach((boxId) => markDraggedBoxSourceHidden(boxId));
+  }
+
+  function getDraggedBoxIds(boxId) {
+    if (selectedBoxIds.has(boxId) && selectedBoxIds.size > 1) {
+      return [...selectedBoxIds].filter((selectedBoxId) => Boolean(findBox(selectedBoxId)));
+    }
+
+    return [boxId];
+  }
+
   function revealCategoryHandle(frame) {
     if (!frame) {
       return;
@@ -1141,6 +1153,8 @@
       return;
     }
 
+    const ids = type === "box" ? getDraggedBoxIds(id) : [id];
+
     cleanupDragArtifacts();
     window.getSelection?.()?.removeAllRanges();
     if (type === "category") {
@@ -1148,14 +1162,13 @@
       renderOrganizer();
       markDraggedCategorySourceHidden(id);
     } else if (type === "box") {
-      markDraggedBoxSourceHidden(id);
+      markDraggedBoxSourcesHidden(ids);
     }
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
     document.body.classList.add("drag-no-select");
 
-    const ids = [id];
-    const ghostState = createDragGhost(type, id, event);
+    const ghostState = createDragGhost(type, ids, event);
     document.body.appendChild(ghostState.ghost);
 
     dragState = {
@@ -1166,6 +1179,7 @@
       offsetY: ghostState.offsetY,
       lastSwapCategoryId: null,
       lastSwapBoxId: null,
+      usedLiveBoxSwap: false,
       dropLine: null,
       dropContext: null,
       x: event.clientX,
@@ -1232,7 +1246,8 @@
     return { line: null, context: null };
   }
 
-  function createDragGhost(type, id, event) {
+  function createDragGhost(type, ids, event) {
+    const id = ids[0];
     if (type === "category") {
       const categoryHeader = organizerList.querySelector(`.category-header[data-category-id="${CSS.escape(id)}"]`);
       if (categoryHeader) {
@@ -1262,20 +1277,12 @@
         const boxRect = boxCard.getBoundingClientRect();
         const ghost = document.createElement("div");
         ghost.className = "drag-ghost drag-ghost-box";
-        ghost.style.width = `${Math.round(boxRect.width)}px`;
-
-        const boxClone = boxCard.cloneNode(true);
-        boxClone.classList.remove("drag-source-hidden");
-        boxClone.querySelectorAll("input").forEach((input) => {
-          input.value = input.value;
-          input.setAttribute("value", input.value);
-        });
-        ghost.appendChild(boxClone);
+        ghost.innerHTML = `<span class="drag-ghost-box-icon" aria-hidden="true"><i class="bi bi-box-seam"></i><span class="drag-ghost-box-count">${ids.length}</span></span>`;
 
         return {
           ghost,
-          offsetX: event.clientX - boxRect.left,
-          offsetY: event.clientY - boxRect.top
+          offsetX: 24,
+          offsetY: 24
         };
       }
     }
@@ -1312,7 +1319,7 @@
     }
 
     if (dragState.type === "box") {
-      handleBoxDragOverlap();
+      handleBoxDragMotion(x, y);
       return;
     }
 
@@ -1361,39 +1368,54 @@
     swapCategorySectionsInDom(draggedCategoryId, bestTarget.categoryId);
   }
 
-  function handleBoxDragOverlap() {
+  function findBoxTargetFromPoint(x, y, draggedIds) {
+    return document.elementsFromPoint(x, y)
+      .find((element) => element.classList?.contains("box-card")
+        && !element.classList.contains("drag-source-hidden")
+        && !draggedIds.includes(element.dataset.boxId)) || null;
+  }
+
+  function handleBoxDragMotion(x, y) {
     if (!dragState || dragState.type !== "box") {
       return;
     }
 
-    const draggedBoxId = dragState.ids[0];
-    const ghostRect = dragState.ghost.getBoundingClientRect();
-    const bestTarget = [...organizerList.querySelectorAll(".box-card")]
-      .filter((card) => card.dataset.boxId !== draggedBoxId)
-      .map((card) => {
-        const rect = card.getBoundingClientRect();
-        const overlapWidth = Math.max(0, Math.min(ghostRect.right, rect.right) - Math.max(ghostRect.left, rect.left));
-        const overlapHeight = Math.max(0, Math.min(ghostRect.bottom, rect.bottom) - Math.max(ghostRect.top, rect.top));
-        return {
-          boxId: card.dataset.boxId,
-          overlapArea: overlapWidth * overlapHeight
-        };
-      })
-      .filter((entry) => entry.overlapArea > 0)
-      .sort((left, right) => right.overlapArea - left.overlapArea)[0] || null;
-
-    if (!bestTarget) {
+    if (dragState.ids.length > 1) {
       dragState.lastSwapBoxId = null;
+      const target = getDropTargetFromPoint(x, y);
+      dragState.dropLine = target.line;
+      dragState.dropContext = target.context;
+      if (target.line) {
+        target.line.classList.add("drop-target");
+      }
       return;
     }
 
-    if (dragState.lastSwapBoxId === bestTarget.boxId) {
+    const draggedBoxId = dragState.ids[0];
+    const targetCard = findBoxTargetFromPoint(x, y, dragState.ids);
+
+    if (!targetCard) {
+      dragState.lastSwapBoxId = null;
+      const target = getDropTargetFromPoint(x, y);
+      dragState.dropLine = target.line;
+      dragState.dropContext = target.context;
+      if (target.line) {
+        target.line.classList.add("drop-target");
+      }
       return;
     }
 
-    swapBoxPositions(draggedBoxId, bestTarget.boxId);
-    dragState.lastSwapBoxId = bestTarget.boxId;
-    swapBoxCardsInDom(draggedBoxId, bestTarget.boxId);
+    dragState.dropLine = null;
+    dragState.dropContext = null;
+
+    if (dragState.lastSwapBoxId === targetCard.dataset.boxId) {
+      return;
+    }
+
+    swapBoxPositions(draggedBoxId, targetCard.dataset.boxId);
+    dragState.lastSwapBoxId = targetCard.dataset.boxId;
+    dragState.usedLiveBoxSwap = true;
+    swapBoxCardsInDom(draggedBoxId, targetCard.dataset.boxId);
   }
 
   function swapCategoryPositions(draggedCategoryId, targetCategoryId) {
@@ -1620,6 +1642,14 @@
     }
 
     if (currentDrag.type === "box") {
+      if (currentDrag.usedLiveBoxSwap || !context) {
+        selectedBoxIds.clear();
+        scheduleSave();
+        renderOrganizer();
+        return;
+      }
+
+      moveSelectedBoxesToContext(currentDrag.ids, context);
       selectedBoxIds.clear();
       scheduleSave();
       renderOrganizer();
