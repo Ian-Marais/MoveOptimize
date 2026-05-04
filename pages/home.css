@@ -245,6 +245,32 @@ button {
   padding-left: clamp(12px, 4vw, 32px);
 }
 
+.uncategorized-notice {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px dashed var(--blue);
+  border-radius: 8px;
+  background: #eef7ff;
+}
+
+.uncategorized-notice p {
+  margin: 0;
+  color: var(--blue-dark);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.uncategorized-notice button {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 14px;
+  border-color: var(--blue);
+  background: #ffffff;
+  color: var(--blue-dark);
+}
+
 .insert-wrap {
   display: grid;
   grid-template-columns: 1fr;

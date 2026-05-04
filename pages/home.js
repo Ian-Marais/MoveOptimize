@@ -314,6 +314,56 @@
     </div>`;
   }
 
+  function getRootSegmentBoxIds(startIndex) {
+    const boxIds = [];
+
+    for (let index = startIndex; index < state.layout.length; index += 1) {
+      const ref = state.layout[index];
+      if (ref?.type !== "box") {
+        break;
+      }
+
+      boxIds.push(ref.id);
+    }
+
+    return boxIds;
+  }
+
+  function getRootSegmentContext(startIndex) {
+    if (startIndex <= 0) {
+      return { scope: "root-start" };
+    }
+
+    const previousRef = state.layout[startIndex - 1];
+    if (!previousRef) {
+      return { scope: "root-start" };
+    }
+
+    return {
+      scope: "root",
+      afterType: previousRef.type,
+      afterId: previousRef.id
+    };
+  }
+
+  function renderUncategorizedNotice(startIndex) {
+    const boxIds = getRootSegmentBoxIds(startIndex);
+    if (!boxIds.length) {
+      return "";
+    }
+
+    const context = getRootSegmentContext(startIndex);
+    const count = boxIds.length;
+    const label = count === 1 ? "box below isn't in a category yet" : `${count} boxes below aren't in a category yet`;
+
+    return `<section class="uncategorized-notice">
+      <p><strong>Uncategorized:</strong> The ${escapeHtml(label)}.</p>
+      <button type="button" data-action="categorize-root-segment" ${contextAttributes(context)}>
+        Turn ${count === 1 ? "it" : "them"} into a category
+      </button>
+    </section>`;
+  }
+
   function renderEmptyRootInsertLines() {
     const rootContext = { scope: "root-end" };
     return `<div class="empty-root-insert-stack">
@@ -459,14 +509,20 @@
     }
 
     const content = state.categoriesVisible
-      ? state.layout.map((ref) => {
+      ? state.layout.map((ref, index) => {
           if (ref.type === "category") {
             const category = findCategory(ref.id);
             return category ? renderCategory(category, { isDuplicate: duplicateCategoryIds.has(category.id) }) : "";
           }
 
           const box = findBox(ref.id);
-          return box ? renderBox(box, { scope: "root", afterType: "box", afterId: box.id }) : "";
+          if (!box) {
+            return "";
+          }
+
+          const startsRootBoxSegment = index === 0 || state.layout[index - 1]?.type !== "box";
+          const notice = startsRootBoxSegment ? renderUncategorizedNotice(index) : "";
+          return `${notice}${renderBox(box, { scope: "root", afterType: "box", afterId: box.id })}`;
         }).join("")
       : renderFlatHiddenCategories();
 
@@ -583,22 +639,39 @@
     ])].sort((left, right) => left - right);
   }
 
-  function moveFollowingRootBoxIntoCategory(insertIndex, categoryId) {
-    const nextRef = state.layout[insertIndex];
-    if (nextRef?.type !== "box") {
+  function moveRootSegmentIntoCategory(insertIndex, categoryId) {
+    const boxIds = getRootSegmentBoxIds(insertIndex);
+    if (!boxIds.length) {
       return;
     }
 
-    const box = findBox(nextRef.id);
-    if (!box || box.categoryId) {
+    state.layout = state.layout.filter((ref) => !(ref.type === "box" && boxIds.includes(ref.id)));
+    boxIds.forEach((boxId) => {
+      const box = findBox(boxId);
+      if (box) {
+        box.categoryId = categoryId;
+      }
+    });
+    insertBoxesInCategory(boxIds, categoryId, null);
+  }
+
+  function moveFollowingRootBoxIntoCategory(insertIndex, categoryId) {
+    const [firstBoxId] = getRootSegmentBoxIds(insertIndex);
+    if (!firstBoxId) {
+      return;
+    }
+
+    state.layout = state.layout.filter((ref) => !(ref.type === "box" && ref.id === firstBoxId));
+    const box = findBox(firstBoxId);
+    if (!box) {
       return;
     }
 
     box.categoryId = categoryId;
-    insertBoxesInCategory([box.id], categoryId, null);
+    insertBoxesInCategory([firstBoxId], categoryId, null);
   }
 
-  function addCategory(context) {
+  function addCategory(context, options = {}) {
     if (!state.categoriesVisible) {
       return;
     }
@@ -638,7 +711,11 @@
     } else {
       const insertIndex = getRootInsertIndex(context);
       insertRootRef({ type: "category", id }, insertIndex);
-      moveFollowingRootBoxIntoCategory(insertIndex + 1, id);
+      if (options.captureRootSegment) {
+        moveRootSegmentIntoCategory(insertIndex + 1, id);
+      } else {
+        moveFollowingRootBoxIntoCategory(insertIndex + 1, id);
+      }
     }
 
     activeLineKey = "";
@@ -1018,7 +1095,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "expand-photo", "camera", "gallery", "clear-photo", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -1036,6 +1113,11 @@
 
     if (action === "new-box") {
       addBox(context);
+      return;
+    }
+
+    if (action === "categorize-root-segment") {
+      addCategory(context, { captureRootSegment: true });
       return;
     }
 
