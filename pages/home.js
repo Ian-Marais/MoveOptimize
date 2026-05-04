@@ -941,6 +941,10 @@
       return;
     }
 
+    if (context.afterType === "box" && movingIds.includes(context.afterId)) {
+      return;
+    }
+
     state.layout = state.layout.filter((ref) => !(ref.type === "box" && movingIds.includes(ref.id)));
 
     if (state.categoriesVisible && (context.scope === "category" || context.scope === "category-start") && context.categoryId) {
@@ -1007,15 +1011,10 @@
       return;
     }
 
-    if (type === "box" && !selectedBoxIds.has(id)) {
-      selectedBoxIds.add(id);
-      renderOrganizer();
-    }
-
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
 
-    const ids = type === "box" ? [...selectedBoxIds] : [id];
+    const ids = [id];
     const ghost = document.createElement("div");
     ghost.className = "drag-ghost";
     ghost.textContent = type === "box" ? `${ids.length} ${ids.length === 1 ? "box" : "boxes"}` : findCategory(id)?.name || "Category";
@@ -1026,11 +1025,69 @@
       ids,
       ghost,
       dropLine: null,
+      dropContext: null,
       x: event.clientX,
       y: event.clientY
     };
 
     moveGhost(event.clientX, event.clientY);
+  }
+
+  function contextBeforeBox(boxId, categoryId) {
+    const categoryBoxes = boxesForCategory(categoryId);
+    const index = categoryBoxes.findIndex((box) => box.id === boxId);
+    if (index <= 0) {
+      return { scope: "category-start", categoryId, afterType: "category", afterId: categoryId };
+    }
+
+    const previousBox = categoryBoxes[index - 1];
+    return { scope: "category", categoryId, afterType: "box", afterId: previousBox.id };
+  }
+
+  function contextBeforeRootBox(boxId) {
+    const index = state.layout.findIndex((ref) => ref.type === "box" && ref.id === boxId);
+    if (index <= 0) {
+      return { scope: "root-start" };
+    }
+
+    const previousRef = state.layout[index - 1];
+    return { scope: "root", afterType: previousRef.type, afterId: previousRef.id };
+  }
+
+  function findInsertLineForContext(context) {
+    const key = contextKey(context);
+    return [...organizerList.querySelectorAll(".insert-line")]
+      .find((line) => contextKey(contextFromElement(line)) === key) || null;
+  }
+
+  function getDropTargetFromPoint(x, y) {
+    const elements = document.elementsFromPoint(x, y);
+    const line = elements.find((element) => element.classList?.contains("insert-line"));
+    if (line) {
+      return { line, context: contextFromElement(line) };
+    }
+
+    const boxCard = elements.find((element) => element.classList?.contains("box-card"));
+    if (boxCard) {
+      const boxId = boxCard.dataset.boxId;
+      const categoryId = boxCard.dataset.categoryId || null;
+      const rect = boxCard.getBoundingClientRect();
+      const dropAfterBox = y >= rect.top + rect.height / 2;
+      const context = categoryId
+        ? (dropAfterBox ? { scope: "category", categoryId, afterType: "box", afterId: boxId } : contextBeforeBox(boxId, categoryId))
+        : (dropAfterBox ? { scope: "root", afterType: "box", afterId: boxId } : contextBeforeRootBox(boxId));
+
+      return { line: findInsertLineForContext(context), context };
+    }
+
+    const categoryHeader = elements.find((element) => element.classList?.contains("category-header"));
+    if (categoryHeader) {
+      const categoryId = categoryHeader.dataset.categoryId;
+      const context = { scope: "category-start", categoryId, afterType: "category", afterId: categoryId };
+      return { line: findInsertLineForContext(context), context };
+    }
+
+    return { line: null, context: null };
   }
 
   function moveGhost(x, y) {
@@ -1047,12 +1104,13 @@
     }
 
     document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
-    const elements = document.elementsFromPoint(x, y);
-    const line = elements.find((element) => element.classList?.contains("insert-line"));
+    const target = getDropTargetFromPoint(x, y);
 
-    if (line) {
-      line.classList.add("drop-target");
-      dragState.dropLine = line;
+    dragState.dropLine = target.line;
+    dragState.dropContext = target.context;
+
+    if (target.line) {
+      target.line.classList.add("drop-target");
     }
   }
 
@@ -1063,12 +1121,28 @@
     }
 
     const currentDrag = dragState;
-    const context = currentDrag.dropLine ? contextFromElement(currentDrag.dropLine) : { scope: "root-end" };
+    const context = currentDrag.dropContext || (currentDrag.dropLine ? contextFromElement(currentDrag.dropLine) : null);
     currentDrag.ghost.remove();
     document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
     dragState = null;
     root.classList.remove("category-dragging");
     cancelPress();
+
+    if (!context) {
+      if (currentDrag.type === "box") {
+        selectedBoxIds.clear();
+      }
+      renderOrganizer();
+      return;
+    }
+
+    if (currentDrag.type === "box") {
+      moveSelectedBoxesToContext(currentDrag.ids, context);
+      selectedBoxIds.clear();
+      scheduleSave();
+      renderOrganizer();
+      return;
+    }
 
     const confirmed = await askConfirm("Are you sure?");
     if (!confirmed) {
@@ -1076,11 +1150,7 @@
       return;
     }
 
-    if (currentDrag.type === "box") {
-      moveSelectedBoxesToContext(currentDrag.ids, context);
-    } else {
-      moveCategoryToContext(currentDrag.ids[0], context);
-    }
+    moveCategoryToContext(currentDrag.ids[0], context);
 
     scheduleSave();
     renderOrganizer();
@@ -1325,7 +1395,17 @@
     });
 
     root.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("[data-skip-select], button, input, label, .insert-line")) {
+      if (event.target.closest(".insert-line")) {
+        return;
+      }
+
+      const boxCard = event.target.closest(".box-card");
+      if (boxCard) {
+        startPress(event, "box", boxCard.dataset.boxId);
+        return;
+      }
+
+      if (event.target.closest("[data-skip-select], button, input, label")) {
         return;
       }
 
@@ -1333,11 +1413,6 @@
       if (categoryHeader) {
         startPress(event, "category", categoryHeader.dataset.categoryId);
         return;
-      }
-
-      const boxCard = event.target.closest(".box-card");
-      if (boxCard) {
-        startPress(event, "box", boxCard.dataset.boxId);
       }
     });
 
