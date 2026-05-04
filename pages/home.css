@@ -420,17 +420,18 @@ button {
 
 .box-details {
   display: grid;
-  align-content: center;
-  gap: calc(8px + ((var(--box-scale) - 1) * 6px));
+  align-content: start;
+  gap: calc(6px + ((var(--box-scale) - 1) * 5px));
   min-width: 0;
 }
 
 .box-details input {
-  min-height: calc(44px + ((var(--box-scale) - 1) * 8px));
-  padding: 0 calc(10px + ((var(--box-scale) - 1) * 4px));
+  min-height: calc(34px + ((var(--box-scale) - 1) * 6px));
+  padding: 0 calc(8px + ((var(--box-scale) - 1) * 3px));
   border: 1px solid var(--line);
   border-radius: 6px;
   font-size: calc(1rem + ((var(--box-scale) - 1) * 0.1rem));
+  align-self: start;
 }
 
 .box-details span {
