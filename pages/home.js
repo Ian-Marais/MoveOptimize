@@ -480,7 +480,6 @@
             <span>All boxes</span>
           </label>
         </div>
-        <span>${escapeHtml(options.flat && category ? category.name : "Folder or Box")}</span>
       </div>
     </article>
     ${renderInsertLine(context)}`;
