@@ -393,6 +393,14 @@
     root.classList.remove("category-dragging");
   }
 
+  function markDraggedCategorySourceHidden(categoryId) {
+    organizerList.querySelector(`.category-section[data-category-id="${CSS.escape(categoryId)}"]`)?.classList.add("drag-source-hidden");
+  }
+
+  function markDraggedBoxSourceHidden(boxId) {
+    organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(boxId)}"]`)?.classList.add("drag-source-hidden");
+  }
+
   function revealCategoryHandle(frame) {
     if (!frame) {
       return;
@@ -1138,7 +1146,9 @@
     if (type === "category") {
       collapseCategoriesForDrag();
       renderOrganizer();
-      organizerList.querySelector(`.category-section[data-category-id="${CSS.escape(id)}"]`)?.classList.add("drag-source-hidden");
+      markDraggedCategorySourceHidden(id);
+    } else if (type === "box") {
+      markDraggedBoxSourceHidden(id);
     }
     suppressClick = true;
     root.classList.toggle("category-dragging", type === "category");
@@ -1154,6 +1164,8 @@
       ghost: ghostState.ghost,
       offsetX: ghostState.offsetX,
       offsetY: ghostState.offsetY,
+      lastSwapCategoryId: null,
+      lastSwapBoxId: null,
       dropLine: null,
       dropContext: null,
       x: event.clientX,
@@ -1244,6 +1256,30 @@
       }
     }
 
+    if (type === "box") {
+      const boxCard = organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(id)}"]`);
+      if (boxCard) {
+        const boxRect = boxCard.getBoundingClientRect();
+        const ghost = document.createElement("div");
+        ghost.className = "drag-ghost drag-ghost-box";
+        ghost.style.width = `${Math.round(boxRect.width)}px`;
+
+        const boxClone = boxCard.cloneNode(true);
+        boxClone.classList.remove("drag-source-hidden");
+        boxClone.querySelectorAll("input").forEach((input) => {
+          input.value = input.value;
+          input.setAttribute("value", input.value);
+        });
+        ghost.appendChild(boxClone);
+
+        return {
+          ghost,
+          offsetX: event.clientX - boxRect.left,
+          offsetY: event.clientY - boxRect.top
+        };
+      }
+    }
+
     const ghost = document.createElement("div");
     ghost.className = "drag-ghost";
     ghost.textContent = type === "box" ? `1 box` : findCategory(id)?.name || "Category";
@@ -1269,6 +1305,17 @@
     }
 
     document.querySelectorAll(".insert-line.drop-target").forEach((line) => line.classList.remove("drop-target"));
+
+    if (dragState.type === "category") {
+      handleCategoryDragOverlap();
+      return;
+    }
+
+    if (dragState.type === "box") {
+      handleBoxDragOverlap();
+      return;
+    }
+
     const target = getDropTargetFromPoint(x, y);
 
     dragState.dropLine = target.line;
@@ -1277,6 +1324,279 @@
     if (target.line) {
       target.line.classList.add("drop-target");
     }
+  }
+
+  function handleCategoryDragOverlap() {
+    if (!dragState || dragState.type !== "category") {
+      return;
+    }
+
+    const draggedCategoryId = dragState.ids[0];
+    const ghostRect = dragState.ghost.getBoundingClientRect();
+    const bestTarget = [...organizerList.querySelectorAll(".category-section")]
+      .filter((section) => section.dataset.categoryId !== draggedCategoryId)
+      .map((section) => {
+        const rect = section.getBoundingClientRect();
+        const overlapWidth = Math.max(0, Math.min(ghostRect.right, rect.right) - Math.max(ghostRect.left, rect.left));
+        const overlapHeight = Math.max(0, Math.min(ghostRect.bottom, rect.bottom) - Math.max(ghostRect.top, rect.top));
+        return {
+          categoryId: section.dataset.categoryId,
+          overlapArea: overlapWidth * overlapHeight
+        };
+      })
+      .filter((entry) => entry.overlapArea > 0)
+      .sort((left, right) => right.overlapArea - left.overlapArea)[0] || null;
+
+    if (!bestTarget) {
+      dragState.lastSwapCategoryId = null;
+      return;
+    }
+
+    if (dragState.lastSwapCategoryId === bestTarget.categoryId) {
+      return;
+    }
+
+    swapCategoryPositions(draggedCategoryId, bestTarget.categoryId);
+    dragState.lastSwapCategoryId = bestTarget.categoryId;
+    swapCategorySectionsInDom(draggedCategoryId, bestTarget.categoryId);
+  }
+
+  function handleBoxDragOverlap() {
+    if (!dragState || dragState.type !== "box") {
+      return;
+    }
+
+    const draggedBoxId = dragState.ids[0];
+    const ghostRect = dragState.ghost.getBoundingClientRect();
+    const bestTarget = [...organizerList.querySelectorAll(".box-card")]
+      .filter((card) => card.dataset.boxId !== draggedBoxId)
+      .map((card) => {
+        const rect = card.getBoundingClientRect();
+        const overlapWidth = Math.max(0, Math.min(ghostRect.right, rect.right) - Math.max(ghostRect.left, rect.left));
+        const overlapHeight = Math.max(0, Math.min(ghostRect.bottom, rect.bottom) - Math.max(ghostRect.top, rect.top));
+        return {
+          boxId: card.dataset.boxId,
+          overlapArea: overlapWidth * overlapHeight
+        };
+      })
+      .filter((entry) => entry.overlapArea > 0)
+      .sort((left, right) => right.overlapArea - left.overlapArea)[0] || null;
+
+    if (!bestTarget) {
+      dragState.lastSwapBoxId = null;
+      return;
+    }
+
+    if (dragState.lastSwapBoxId === bestTarget.boxId) {
+      return;
+    }
+
+    swapBoxPositions(draggedBoxId, bestTarget.boxId);
+    dragState.lastSwapBoxId = bestTarget.boxId;
+    swapBoxCardsInDom(draggedBoxId, bestTarget.boxId);
+  }
+
+  function swapCategoryPositions(draggedCategoryId, targetCategoryId) {
+    const draggedIndex = state.layout.findIndex((ref) => ref.type === "category" && ref.id === draggedCategoryId);
+    const targetIndex = state.layout.findIndex((ref) => ref.type === "category" && ref.id === targetCategoryId);
+
+    if (draggedIndex < 0 || targetIndex < 0 || draggedIndex === targetIndex) {
+      return;
+    }
+
+    [state.layout[draggedIndex], state.layout[targetIndex]] = [state.layout[targetIndex], state.layout[draggedIndex]];
+    reindexRootLayout();
+  }
+
+  function swapCategorySectionsInDom(draggedCategoryId, targetCategoryId) {
+    const draggedSection = organizerList.querySelector(`.category-section[data-category-id="${CSS.escape(draggedCategoryId)}"]`);
+    const targetSection = organizerList.querySelector(`.category-section[data-category-id="${CSS.escape(targetCategoryId)}"]`);
+
+    if (!draggedSection || !targetSection || draggedSection === targetSection) {
+      return;
+    }
+
+    const parent = draggedSection.parentNode;
+    if (!parent || parent !== targetSection.parentNode) {
+      return;
+    }
+
+    const firstRects = new Map([
+      [draggedSection, draggedSection.getBoundingClientRect()],
+      [targetSection, targetSection.getBoundingClientRect()]
+    ]);
+
+    const draggedPlaceholder = document.createElement("div");
+    const targetPlaceholder = document.createElement("div");
+
+    parent.replaceChild(draggedPlaceholder, draggedSection);
+    parent.replaceChild(targetPlaceholder, targetSection);
+    parent.replaceChild(draggedSection, targetPlaceholder);
+    parent.replaceChild(targetSection, draggedPlaceholder);
+
+    animateCategorySwapMotion(firstRects);
+  }
+
+  function animateCategorySwapMotion(firstRects) {
+    firstRects.forEach((firstRect, section) => {
+      const lastRect = section.getBoundingClientRect();
+      const deltaX = firstRect.left - lastRect.left;
+      const deltaY = firstRect.top - lastRect.top;
+
+      if (!deltaX && !deltaY) {
+        return;
+      }
+
+      section.style.transition = "none";
+      section.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+      window.requestAnimationFrame(() => {
+        section.style.transition = "transform 180ms ease";
+        section.style.transform = "translate(0, 0)";
+
+        const cleanup = () => {
+          section.style.transition = "";
+          section.style.transform = "";
+          section.removeEventListener("transitionend", cleanup);
+        };
+
+        section.addEventListener("transitionend", cleanup);
+        window.setTimeout(cleanup, 220);
+      });
+    });
+  }
+
+  function swapBoxPositions(draggedBoxId, targetBoxId) {
+    const draggedBox = findBox(draggedBoxId);
+    const targetBox = findBox(targetBoxId);
+
+    if (!draggedBox || !targetBox || draggedBoxId === targetBoxId) {
+      return;
+    }
+
+    const draggedCategoryId = draggedBox.categoryId || null;
+    const targetCategoryId = targetBox.categoryId || null;
+
+    if (draggedCategoryId === null && targetCategoryId === null) {
+      const draggedIndex = state.layout.findIndex((ref) => ref.type === "box" && ref.id === draggedBoxId);
+      const targetIndex = state.layout.findIndex((ref) => ref.type === "box" && ref.id === targetBoxId);
+      if (draggedIndex < 0 || targetIndex < 0) {
+        return;
+      }
+      [state.layout[draggedIndex], state.layout[targetIndex]] = [state.layout[targetIndex], state.layout[draggedIndex]];
+      reindexRootLayout();
+      return;
+    }
+
+    if (draggedCategoryId === targetCategoryId) {
+      const draggedOrder = draggedBox.order;
+      draggedBox.order = targetBox.order;
+      targetBox.order = draggedOrder;
+      reindexAllBoxOrders();
+      return;
+    }
+
+    if (draggedCategoryId === null || targetCategoryId === null) {
+      const rootBoxId = draggedCategoryId === null ? draggedBoxId : targetBoxId;
+      const categoryBoxId = draggedCategoryId === null ? targetBoxId : draggedBoxId;
+      const categoryId = draggedCategoryId === null ? targetCategoryId : draggedCategoryId;
+      const rootIndex = state.layout.findIndex((ref) => ref.type === "box" && ref.id === rootBoxId);
+      if (rootIndex < 0 || !categoryId) {
+        return;
+      }
+
+      const categoryOrder = boxesForCategory(categoryId).map((box) => box.id);
+      const categoryIndex = categoryOrder.indexOf(categoryBoxId);
+      if (categoryIndex < 0) {
+        return;
+      }
+
+      state.layout[rootIndex] = { type: "box", id: categoryBoxId };
+
+      const reorderedCategoryIds = [...categoryOrder];
+      reorderedCategoryIds[categoryIndex] = rootBoxId;
+
+      const rootBox = findBox(rootBoxId);
+      const categoryBox = findBox(categoryBoxId);
+      if (!rootBox || !categoryBox) {
+        return;
+      }
+
+      rootBox.categoryId = categoryId;
+      categoryBox.categoryId = null;
+
+      reorderedCategoryIds.forEach((boxId, index) => {
+        const box = findBox(boxId);
+        if (box) {
+          box.categoryId = categoryId;
+          box.order = (index + 1) * 1000;
+        }
+      });
+
+      reindexRootLayout();
+      return;
+    }
+
+    const draggedCategoryIds = boxesForCategory(draggedCategoryId).map((box) => box.id);
+    const targetCategoryIds = boxesForCategory(targetCategoryId).map((box) => box.id);
+    const draggedIndex = draggedCategoryIds.indexOf(draggedBoxId);
+    const targetIndex = targetCategoryIds.indexOf(targetBoxId);
+
+    if (draggedIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    draggedCategoryIds[draggedIndex] = targetBoxId;
+    targetCategoryIds[targetIndex] = draggedBoxId;
+
+    draggedBox.categoryId = targetCategoryId;
+    targetBox.categoryId = draggedCategoryId;
+
+    draggedCategoryIds.forEach((boxId, index) => {
+      const box = findBox(boxId);
+      if (box) {
+        box.categoryId = draggedCategoryId;
+        box.order = (index + 1) * 1000;
+      }
+    });
+
+    targetCategoryIds.forEach((boxId, index) => {
+      const box = findBox(boxId);
+      if (box) {
+        box.categoryId = targetCategoryId;
+        box.order = (index + 1) * 1000;
+      }
+    });
+  }
+
+  function swapBoxCardsInDom(draggedBoxId, targetBoxId) {
+    const draggedCard = organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(draggedBoxId)}"]`);
+    const targetCard = organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(targetBoxId)}"]`);
+
+    if (!draggedCard || !targetCard || draggedCard === targetCard) {
+      return;
+    }
+
+    const draggedParent = draggedCard.parentNode;
+    const targetParent = targetCard.parentNode;
+    if (!draggedParent || !targetParent) {
+      return;
+    }
+
+    const firstRects = new Map([
+      [draggedCard, draggedCard.getBoundingClientRect()],
+      [targetCard, targetCard.getBoundingClientRect()]
+    ]);
+
+    const draggedPlaceholder = document.createElement("div");
+    const targetPlaceholder = document.createElement("div");
+
+    draggedParent.replaceChild(draggedPlaceholder, draggedCard);
+    targetParent.replaceChild(targetPlaceholder, targetCard);
+    draggedParent.replaceChild(targetCard, draggedPlaceholder);
+    targetParent.replaceChild(draggedCard, targetPlaceholder);
+
+    animateCategorySwapMotion(firstRects);
   }
 
   async function finishDrag() {
@@ -1292,34 +1612,28 @@
     document.body.classList.remove("drag-no-select");
     cancelPress();
 
-    if (!context) {
-      if (currentDrag.type === "box") {
-        selectedBoxIds.clear();
-      } else {
-        restoreCategoriesAfterDrag();
-      }
+    if (currentDrag.type === "category") {
+      restoreCategoriesAfterDrag();
+      scheduleSave();
       renderOrganizer();
       return;
     }
 
     if (currentDrag.type === "box") {
-      moveSelectedBoxesToContext(currentDrag.ids, context);
       selectedBoxIds.clear();
       scheduleSave();
       renderOrganizer();
       return;
     }
 
-    const confirmed = await askConfirm("Are you sure?");
-    if (!confirmed) {
-      restoreCategoriesAfterDrag();
+    if (!context) {
+      selectedBoxIds.clear();
       renderOrganizer();
       return;
     }
 
-    moveCategoryToContext(currentDrag.ids[0], context);
-    restoreCategoriesAfterDrag();
-
+    moveSelectedBoxesToContext(currentDrag.ids, context);
+    selectedBoxIds.clear();
     scheduleSave();
     renderOrganizer();
   }

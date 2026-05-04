@@ -264,7 +264,7 @@ button {
   display: none;
 }
 
-.category-section.drag-source-hidden {
+.drag-source-hidden {
   visibility: hidden;
 }
 
@@ -852,6 +852,28 @@ button {
 }
 
 .drag-ghost-category .category-name {
+  caret-color: transparent;
+}
+
+.drag-ghost-box {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  box-shadow: none;
+}
+
+.drag-ghost-box .box-card {
+  margin: 0;
+  box-shadow: 0 20px 40px rgba(20, 35, 55, 0.22);
+}
+
+.drag-ghost-box .box-card * {
+  pointer-events: none;
+}
+
+.drag-ghost-box .box-card input {
   caret-color: transparent;
 }
 
