@@ -223,7 +223,7 @@ button {
   border-radius: 999px;
   background: #ffffff;
   color: var(--muted);
-  box-shadow: 0 8px 18px rgba(20, 35, 55, 0.12);
+    box-shadow: 0 1px 3px rgba(20, 35, 55, 0.12);
   transform: translateY(0) scale(0.92);
   opacity: 0;
   pointer-events: none;
