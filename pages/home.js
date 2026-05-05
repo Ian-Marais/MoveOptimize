@@ -180,20 +180,29 @@
         box.categoryId = null;
       }
 
+      const parsedBoxNumber = Number.parseInt(box.numberInput, 10);
       let boxNumber = Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
-      if (!boxNumber || usedBoxNumbers.has(boxNumber)) {
+      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && Number.isInteger(parsedBoxNumber) && parsedBoxNumber > 0 && !usedBoxNumbers.has(parsedBoxNumber)) {
+        boxNumber = parsedBoxNumber;
+      }
+
+      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && !box.manualNumberEntry) {
         while (usedBoxNumbers.has(inferredNextBoxNumber)) {
           inferredNextBoxNumber += 1;
         }
         boxNumber = inferredNextBoxNumber;
       }
 
-      box.number = boxNumber;
-      box.numberInput = String(box.number);
+      box.number = Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null;
+      box.numberInput = typeof box.numberInput === "string"
+        ? box.numberInput
+        : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
       box.numberError = typeof box.numberError === "string" ? box.numberError : "";
       box.manualNumberEntry = Boolean(box.manualNumberEntry);
-      usedBoxNumbers.add(boxNumber);
-      inferredNextBoxNumber = Math.max(inferredNextBoxNumber, boxNumber + 1);
+      if (Number.isInteger(box.number) && box.number > 0) {
+        usedBoxNumbers.add(box.number);
+        inferredNextBoxNumber = Math.max(inferredNextBoxNumber, box.number + 1);
+      }
       box.order = Number.isFinite(box.order) ? box.order : (index + 1) * 1000;
       box.name = typeof box.name === "string" ? box.name : "";
       box.viewScale = normalizeBoxScale(box.viewScale);
@@ -534,10 +543,11 @@
     const isUniversalSource = state.meta.universalBoxScaleSourceId === box.id;
     const universalScaleLocked = Boolean(state.meta.universalBoxScaleSourceId && !isUniversalSource);
     const boxName = typeof box.name === "string" ? box.name : "";
-    const photoAlt = boxName.trim() || `Box ${box.number}`;
-    const nameRequired = !boxName.trim();
-    const numberValue = typeof box.numberInput === "string" ? box.numberInput : String(box.number);
-    const numberError = typeof box.numberError === "string" ? box.numberError : "";
+    const boxNumberLabel = Number.isInteger(box.number) && box.number > 0 ? `Box ${box.number}` : "Box";
+    const photoAlt = boxName.trim() || boxNumberLabel;
+    const numberValue = typeof box.numberInput === "string" ? box.numberInput : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
+    const numberError = (typeof box.numberError === "string" && box.numberError)
+      || (Boolean(box.manualNumberEntry) && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
     const showManualNumberEntry = Boolean(box.manualNumberEntry);
 
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
@@ -549,8 +559,7 @@
         <button type="button" class="icon-button image-action clear" data-action="clear-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Clear box photo"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="box-details">
-        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" aria-invalid="${nameRequired ? "true" : "false"}" placeholder="Name this box">
-        ${nameRequired ? '<p class="box-inline-error">Name required</p>' : ""}
+        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" placeholder="Name this box">
         ${showManualNumberEntry
           ? `<label class="box-number-edit-wrap">
               <span>Box number</span>
@@ -797,6 +806,19 @@
     return true;
   }
 
+  function assignNumbersToUnnumberedBoxes() {
+    state.boxes.forEach((box) => {
+      if (Number.isInteger(box.number) && box.number > 0) {
+        return;
+      }
+
+      const boxNumber = claimNextBoxNumber();
+      box.number = boxNumber;
+      box.numberInput = String(boxNumber);
+      box.numberError = "";
+    });
+  }
+
   function recycleBoxNumbers(boxIds) {
     const remainingBoxIds = new Set(state.boxes.filter((box) => !boxIds.includes(box.id)).map((box) => box.id));
     const remainingNumbers = new Set(
@@ -1020,7 +1042,11 @@
     window.setTimeout(() => {
       activeLineKey = "";
       renderOrganizer();
-      focusBox(box.id);
+      if (box.manualNumberEntry && (!Number.isInteger(box.number) || box.number <= 0)) {
+        focusBoxNumber(box.id);
+      } else {
+        focusBox(box.id);
+      }
     }, 0);
   }
 
@@ -1028,8 +1054,8 @@
     const id = uid("box");
     const box = {
       id,
-      number: boxNumber,
-      numberInput: String(boxNumber),
+      number: Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null,
+      numberInput: Number.isInteger(boxNumber) && boxNumber > 0 ? String(boxNumber) : "",
       numberError: "",
       manualNumberEntry: Boolean(options.manualNumberEntry),
       name: typeof options.name === "string" ? options.name : "",
@@ -1081,7 +1107,7 @@
   function addBox(context) {
     const insertionContext = resolveBoxInsertionContext(context);
     if (state.meta.autoBoxNumbers === false) {
-      createBoxRecord(insertionContext, peekNextBoxNumber(), {
+      createBoxRecord(insertionContext, null, {
         name: "",
         manualNumberEntry: true
       });
@@ -2270,6 +2296,9 @@
 
     autoBoxNumberToggle.addEventListener("change", () => {
       state.meta.autoBoxNumbers = autoBoxNumberToggle.checked;
+      if (state.meta.autoBoxNumbers) {
+        assignNumbersToUnnumberedBoxes();
+      }
       scheduleSave();
       renderOrganizer();
     });
