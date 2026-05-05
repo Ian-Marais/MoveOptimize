@@ -90,6 +90,14 @@ button {
   font-weight: 700;
 }
 
+.toolbar-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 18px;
+}
+
 .category-toggle {
   display: inline-flex;
   align-items: center;
@@ -555,6 +563,38 @@ button {
   font-weight: 700;
 }
 
+.box-number-label {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.box-number-edit-wrap {
+  display: grid;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+.box-number-edit-wrap span {
+  color: var(--ink);
+}
+
+.box-number-edit-wrap input {
+  width: 132px;
+}
+
+.box-inline-error {
+  margin: -2px 0 0;
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .box-scale-controls {
   display: flex;
   flex-wrap: wrap;
@@ -703,6 +743,69 @@ button {
   object-fit: contain;
   border-radius: 6px;
   background: #eef3f8;
+}
+
+.box-create-panel {
+  width: min(620px, 100%);
+}
+
+.box-create-form {
+  display: grid;
+  gap: 16px;
+}
+
+.box-create-photo-block {
+  display: grid;
+  gap: 12px;
+}
+
+.box-create-photo-block img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 100%);
+}
+
+.box-create-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.box-create-photo-actions button {
+  flex: 1 1 150px;
+}
+
+.box-create-field {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.box-create-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.box-create-field input:focus-visible {
+  outline: 3px solid rgba(15, 111, 189, 0.18);
+  outline-offset: 1px;
+  border-color: var(--blue);
+}
+
+.form-error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 700;
 }
 
 .lightbox-backdrop {
@@ -901,6 +1004,15 @@ button {
 }
 
 @media (max-width: 520px) {
+  .app-toolbar {
+    align-items: flex-start;
+  }
+
+  .toolbar-toggles {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .app-toolbar {
     align-items: flex-start;
     flex-direction: column;

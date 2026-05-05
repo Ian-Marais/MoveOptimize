@@ -32,6 +32,7 @@
 
   const organizerList = root.querySelector("#organizerList");
   const categoryToggle = root.querySelector("#categoryToggle");
+  const autoBoxNumberToggle = root.querySelector("#autoBoxNumberToggle");
   const summary = root.querySelector("[data-summary]");
   const categoryDuplicateWarning = root.querySelector("#categoryDuplicateWarning");
   const bulkActions = root.querySelector("#bulkActions");
@@ -41,6 +42,13 @@
   const confirmMessage = root.querySelector("#confirmMessage");
   const photoModal = root.querySelector("#photoModal");
   const photoPreview = root.querySelector("#photoPreview");
+  const boxCreateModal = root.querySelector("#boxCreateModal");
+  const boxCreatePreview = root.querySelector("#boxCreatePreview");
+  const boxCreateNameInput = root.querySelector("#boxCreateName");
+  const boxCreateNumberInput = root.querySelector("#boxCreateNumber");
+  const boxCreateError = root.querySelector("#boxCreateError");
+  const boxCreateCameraInput = root.querySelector("#boxCreateCameraInput");
+  const boxCreateGalleryInput = root.querySelector("#boxCreateGalleryInput");
   const lightboxModal = root.querySelector("#lightboxModal");
   const lightboxImage = root.querySelector("#lightboxImage");
   const categoryDeleteModal = root.querySelector("#categoryDeleteModal");
@@ -63,6 +71,7 @@
   let dragState = null;
   let suppressClick = false;
   let categoryDragCollapseState = null;
+  let pendingBoxDraft = null;
 
   const emptyState = () => ({
     categoriesVisible: true,
@@ -70,6 +79,7 @@
     boxes: [],
     layout: [],
     meta: {
+      autoBoxNumbers: true,
       availableCategoryNumbers: [],
       availableBoxNumbers: [],
       nextBoxNumber: 1,
@@ -99,6 +109,7 @@
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
+  const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => box.id !== excludingBoxId && box.number === boxNumber);
   const normalizeBoxScale = (value) => {
     const parsed = Number.parseFloat(value);
     return BOX_SCALE_OPTIONS.includes(parsed) ? parsed : 1;
@@ -151,7 +162,8 @@
     state.categories = Array.isArray(state.categories) ? state.categories : [];
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
-    state.meta = state.meta || { availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
+    state.meta = state.meta || { autoBoxNumbers: true, availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
+    state.meta.autoBoxNumbers = state.meta.autoBoxNumbers !== false;
     state.meta.availableCategoryNumbers = Array.isArray(state.meta.availableCategoryNumbers) ? state.meta.availableCategoryNumbers : [];
     state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
     state.meta.universalBoxScaleSourceId = typeof state.meta.universalBoxScaleSourceId === "string" ? state.meta.universalBoxScaleSourceId : null;
@@ -177,10 +189,13 @@
       }
 
       box.number = boxNumber;
+      box.numberInput = String(box.number);
+      box.numberError = typeof box.numberError === "string" ? box.numberError : "";
+      box.manualNumberEntry = Boolean(box.manualNumberEntry);
       usedBoxNumbers.add(boxNumber);
       inferredNextBoxNumber = Math.max(inferredNextBoxNumber, boxNumber + 1);
       box.order = Number.isFinite(box.order) ? box.order : (index + 1) * 1000;
-      box.name = box.name || `Box ${index + 1}`;
+      box.name = typeof box.name === "string" ? box.name : "";
       box.viewScale = normalizeBoxScale(box.viewScale);
     });
 
@@ -518,17 +533,31 @@
     const effectiveScale = getEffectiveBoxScale(box);
     const isUniversalSource = state.meta.universalBoxScaleSourceId === box.id;
     const universalScaleLocked = Boolean(state.meta.universalBoxScaleSourceId && !isUniversalSource);
+    const boxName = typeof box.name === "string" ? box.name : "";
+    const photoAlt = boxName.trim() || `Box ${box.number}`;
+    const nameRequired = !boxName.trim();
+    const numberValue = typeof box.numberInput === "string" ? box.numberInput : String(box.number);
+    const numberError = typeof box.numberError === "string" ? box.numberError : "";
+    const showManualNumberEntry = Boolean(box.manualNumberEntry);
 
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
-        <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(box.name)} photo" loading="lazy">
+        <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(photoAlt)} photo" loading="lazy">
         <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
         <button type="button" class="icon-button image-action camera" data-action="camera" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Take box photo"><i class="bi bi-camera-fill"></i></button>
         <button type="button" class="icon-button image-action gallery" data-action="gallery" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Choose box photo"><i class="bi bi-images"></i></button>
         <button type="button" class="icon-button image-action clear" data-action="clear-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Clear box photo"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="box-details">
-        <input type="text" value="${escapeHtml(box.name)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name">
+        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" aria-invalid="${nameRequired ? "true" : "false"}" placeholder="Name this folder or box">
+        ${nameRequired ? '<p class="box-inline-error">Name required</p>' : ""}
+        ${showManualNumberEntry
+          ? `<label class="box-number-edit-wrap">
+              <span>Box number</span>
+              <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box number" min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
+            </label>
+            ${numberError ? `<p class="box-inline-error">${escapeHtml(numberError)}</p>` : ""}`
+          : `<span class="box-number-label">Box ${escapeHtml(box.number)}</span>`}
         <div class="box-scale-controls">
           <label class="box-scale-select-wrap">
             <i class="bi bi-zoom-in"></i>
@@ -604,6 +633,7 @@
     normalizeState();
     cleanupDragArtifacts();
     categoryToggle.checked = state.categoriesVisible;
+    autoBoxNumberToggle.checked = state.meta.autoBoxNumbers !== false;
     const duplicateCategoryIds = getDuplicateCategoryIds();
 
     const boxCount = state.boxes.length;
@@ -698,6 +728,73 @@
     const boxNumber = Number.isFinite(state.meta.nextBoxNumber) && state.meta.nextBoxNumber > 0 ? state.meta.nextBoxNumber : 1;
     state.meta.nextBoxNumber = boxNumber + 1;
     return boxNumber;
+  }
+
+  function peekNextBoxNumber() {
+    const availableNumber = state.meta.availableBoxNumbers[0];
+    if (Number.isInteger(availableNumber) && availableNumber > 0) {
+      return availableNumber;
+    }
+
+    return Number.isFinite(state.meta.nextBoxNumber) && state.meta.nextBoxNumber > 0 ? state.meta.nextBoxNumber : 1;
+  }
+
+  function focusBoxNumber(boxId) {
+    requestAnimationFrame(() => {
+      const input = organizerList.querySelector(`[data-action="box-number"][data-box-id="${CSS.escape(boxId)}"]`);
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  function updateBoxNumberAvailability(previousNumber, nextNumber) {
+    if (Number.isInteger(previousNumber) && previousNumber > 0 && previousNumber !== nextNumber && !boxNumberExists(previousNumber)) {
+      state.meta.availableBoxNumbers = [...new Set([
+        ...state.meta.availableBoxNumbers,
+        previousNumber
+      ])].sort((left, right) => left - right);
+    }
+
+    state.meta.availableBoxNumbers = state.meta.availableBoxNumbers.filter((value) => value !== nextNumber);
+    state.meta.nextBoxNumber = Math.max(
+      Number.isFinite(state.meta.nextBoxNumber) ? state.meta.nextBoxNumber : 1,
+      nextNumber + 1
+    );
+  }
+
+  function validateAndCommitBoxNumber(boxId, options = {}) {
+    const box = findBox(boxId);
+    if (!box) {
+      return false;
+    }
+
+    const requestedNumber = Number.parseInt(box.numberInput, 10);
+    if (!Number.isInteger(requestedNumber) || requestedNumber <= 0) {
+      box.numberError = "Enter a valid box number.";
+      renderOrganizer();
+      if (options.focusOnError !== false) {
+        focusBoxNumber(boxId);
+      }
+      return false;
+    }
+
+    if (boxNumberExists(requestedNumber, boxId)) {
+      box.numberError = "This number already exists, please use another number";
+      renderOrganizer();
+      if (options.focusOnError !== false) {
+        focusBoxNumber(boxId);
+      }
+      return false;
+    }
+
+    const previousNumber = box.number;
+    box.number = requestedNumber;
+    box.numberInput = String(requestedNumber);
+    box.numberError = "";
+    updateBoxNumberAvailability(previousNumber, requestedNumber);
+    scheduleSave();
+    renderOrganizer();
+    return true;
   }
 
   function recycleBoxNumbers(boxIds) {
@@ -843,30 +940,77 @@
     }, 0);
   }
 
-  function addBox(context) {
-    const insertionContext = resolveBoxInsertionContext(context);
-    const boxNumber = claimNextBoxNumber();
-    const id = uid("box");
-    const box = {
-      id,
-      number: boxNumber,
-      name: `Box ${boxNumber}`,
-      categoryId: null,
-      order: Date.now(),
-      createdAt: Date.now(),
-      image: null,
-      viewScale: 1
+  function setBoxDraftError(message = "") {
+    if (!boxCreateError) {
+      return;
+    }
+
+    boxCreateError.hidden = !message;
+    boxCreateError.textContent = message;
+  }
+
+  function resetPendingBoxDraft() {
+    if (pendingBoxDraft?.previewUrl) {
+      URL.revokeObjectURL(pendingBoxDraft.previewUrl);
+    }
+
+    pendingBoxDraft = null;
+  }
+
+  function closeBoxCreateModal() {
+    boxCreateModal.hidden = true;
+    boxCreateCameraInput.value = "";
+    boxCreateGalleryInput.value = "";
+    boxCreateNameInput.value = "";
+    boxCreateNumberInput.value = "";
+    boxCreatePreview.src = PLACEHOLDER_IMAGE;
+    setBoxDraftError("");
+    resetPendingBoxDraft();
+  }
+
+  function updateBoxDraftPreview(file = null) {
+    if (!pendingBoxDraft) {
+      return;
+    }
+
+    if (pendingBoxDraft.previewUrl) {
+      URL.revokeObjectURL(pendingBoxDraft.previewUrl);
+      pendingBoxDraft.previewUrl = null;
+    }
+
+    pendingBoxDraft.file = file || null;
+    pendingBoxDraft.previewUrl = file ? URL.createObjectURL(file) : null;
+    boxCreatePreview.src = pendingBoxDraft.previewUrl || PLACEHOLDER_IMAGE;
+  }
+
+  function openBoxCreateModal(context) {
+    pendingBoxDraft = {
+      context,
+      file: null,
+      previewUrl: null
     };
 
+    boxCreateModal.hidden = false;
+    boxCreateNameInput.value = "";
+    boxCreateNumberInput.value = String(peekNextBoxNumber());
+    boxCreatePreview.src = PLACEHOLDER_IMAGE;
+    setBoxDraftError("");
+    requestAnimationFrame(() => {
+      boxCreateNameInput.focus();
+      boxCreateNameInput.select();
+    });
+  }
+
+  function insertNewBox(insertionContext, box) {
     state.boxes.push(box);
 
     if (state.categoriesVisible && (insertionContext.scope === "category" || insertionContext.scope === "category-start") && insertionContext.categoryId) {
       box.categoryId = insertionContext.categoryId;
-      insertBoxesInCategory([id], insertionContext.categoryId, insertionContext.scope === "category" ? insertionContext.afterId : null);
+      insertBoxesInCategory([box.id], insertionContext.categoryId, insertionContext.scope === "category" ? insertionContext.afterId : null);
     } else {
       box.categoryId = null;
       const insertIndex = state.categoriesVisible ? getRootInsertIndex(insertionContext) : state.layout.length;
-      insertRootRef({ type: "box", id }, insertIndex);
+      insertRootRef({ type: "box", id: box.id }, insertIndex);
     }
 
     selectedBoxIds.clear();
@@ -876,8 +1020,79 @@
     window.setTimeout(() => {
       activeLineKey = "";
       renderOrganizer();
-      focusBox(id);
+      focusBox(box.id);
     }, 0);
+  }
+
+  function createBoxRecord(insertionContext, boxNumber, options = {}) {
+    const id = uid("box");
+    const box = {
+      id,
+      number: boxNumber,
+      numberInput: String(boxNumber),
+      numberError: "",
+      manualNumberEntry: Boolean(options.manualNumberEntry),
+      name: typeof options.name === "string" ? options.name : "",
+      categoryId: null,
+      order: Date.now(),
+      createdAt: Date.now(),
+      image: options.file ? {
+        blob: options.file,
+        type: options.file.type,
+        name: options.file.name,
+        updatedAt: Date.now()
+      } : null,
+      viewScale: 1
+    };
+
+    insertNewBox(insertionContext, box);
+  }
+
+  function submitBoxDraft() {
+    if (!pendingBoxDraft) {
+      return;
+    }
+
+    const boxNumber = Number.parseInt(boxCreateNumberInput.value, 10);
+    if (!Number.isInteger(boxNumber) || boxNumber <= 0) {
+      setBoxDraftError("Enter a valid box number.");
+      boxCreateNumberInput.focus();
+      boxCreateNumberInput.select();
+      return;
+    }
+
+    if (boxNumberExists(boxNumber)) {
+      setBoxDraftError("This number already exists, please use another number");
+      boxCreateNumberInput.focus();
+      boxCreateNumberInput.select();
+      return;
+    }
+
+    const draft = pendingBoxDraft;
+    const boxName = boxCreateNameInput.value.trim();
+
+    closeBoxCreateModal();
+    createBoxRecord(draft.context, boxNumber, {
+      name: boxName,
+      file: draft.file
+    });
+  }
+
+  function addBox(context) {
+    const insertionContext = resolveBoxInsertionContext(context);
+    if (state.meta.autoBoxNumbers === false) {
+      createBoxRecord(insertionContext, peekNextBoxNumber(), {
+        name: "",
+        manualNumberEntry: true
+      });
+      return;
+    }
+
+    const boxNumber = claimNextBoxNumber();
+    createBoxRecord(insertionContext, boxNumber, {
+      name: "",
+      manualNumberEntry: true
+    });
   }
 
   function resolveBoxInsertionContext(context) {
@@ -1677,7 +1892,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -1726,6 +1941,33 @@
         scheduleSave();
         renderOrganizer();
       }
+      return;
+    }
+
+    if (action === "draft-camera") {
+      boxCreateCameraInput.value = "";
+      boxCreateCameraInput.click();
+      return;
+    }
+
+    if (action === "draft-gallery") {
+      boxCreateGalleryInput.value = "";
+      boxCreateGalleryInput.click();
+      return;
+    }
+
+    if (action === "draft-clear-photo") {
+      updateBoxDraftPreview(null);
+      return;
+    }
+
+    if (action === "cancel-box-draft") {
+      closeBoxCreateModal();
+      return;
+    }
+
+    if (action === "create-box-draft") {
+      submitBoxDraft();
       return;
     }
 
@@ -1886,9 +2128,17 @@
       if (target.dataset.action === "box-name") {
         const box = findBox(target.dataset.boxId);
         if (box) {
-          box.name = target.value.trim() || "Untitled Box";
+          box.name = target.value;
           scheduleSave();
           summary.textContent = "Saving box...";
+        }
+      }
+
+      if (target.dataset.action === "box-number") {
+        const box = findBox(target.dataset.boxId);
+        if (box) {
+          box.numberInput = target.value;
+          box.numberError = "";
         }
       }
 
@@ -1900,10 +2150,19 @@
           renderOrganizer();
         }
       }
+
+      if (target === boxCreateNumberInput) {
+        setBoxDraftError("");
+      }
     });
 
     root.addEventListener("change", (event) => {
       const target = event.target;
+
+      if (target.dataset.action === "box-number") {
+        validateAndCommitBoxNumber(target.dataset.boxId);
+        return;
+      }
 
       if (target.dataset.action === "box-scale-universal") {
         const boxId = target.dataset.boxId;
@@ -1919,10 +2178,24 @@
         return;
       }
 
+      if (target.dataset.action === "box-number") {
+        event.preventDefault();
+        event.stopPropagation();
+        validateAndCommitBoxNumber(target.dataset.boxId);
+        return;
+      }
+
       if (target.dataset.action === "category-name" || target.dataset.action === "box-name") {
         event.preventDefault();
         event.stopPropagation();
         target.blur();
+      }
+    });
+
+    root.addEventListener("focusout", (event) => {
+      const target = event.target;
+      if (target.dataset.action === "box-number") {
+        validateAndCommitBoxNumber(target.dataset.boxId);
       }
     });
 
@@ -1995,6 +2268,12 @@
       renderOrganizer();
     });
 
+    autoBoxNumberToggle.addEventListener("change", () => {
+      state.meta.autoBoxNumbers = autoBoxNumberToggle.checked;
+      scheduleSave();
+      renderOrganizer();
+    });
+
     confirmModal.addEventListener("click", (event) => {
       const button = event.target.closest("[data-confirm]");
       if (button) {
@@ -2013,6 +2292,20 @@
       const file = galleryInput.files?.[0];
       if (file && activePhotoBoxId) {
         applyImageToBox(activePhotoBoxId, file);
+      }
+    });
+
+    boxCreateCameraInput.addEventListener("change", () => {
+      const file = boxCreateCameraInput.files?.[0];
+      if (file) {
+        updateBoxDraftPreview(file);
+      }
+    });
+
+    boxCreateGalleryInput.addEventListener("change", () => {
+      const file = boxCreateGalleryInput.files?.[0];
+      if (file) {
+        updateBoxDraftPreview(file);
       }
     });
 
@@ -2046,9 +2339,25 @@
       }
     });
 
+    boxCreateModal.addEventListener("click", (event) => {
+      if (event.target === boxCreateModal) {
+        closeBoxCreateModal();
+      }
+    });
+
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !lightboxModal.hidden) {
         closeImageLightbox();
+        return;
+      }
+
+      if (event.key === "Escape" && !boxCreateModal.hidden) {
+        closeBoxCreateModal();
+        return;
+      }
+
+      if (event.key === "Enter" && !boxCreateModal.hidden && event.target === boxCreateNumberInput) {
+        submitBoxDraft();
       }
     });
   }

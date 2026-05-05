@@ -5,11 +5,18 @@
       <p data-summary>Ready to organize your move.</p>
       <p id="categoryDuplicateWarning" class="category-duplicate-warning" hidden></p>
     </div>
-    <label class="category-toggle" for="categoryToggle">
-      <span>Categories</span>
-      <input id="categoryToggle" type="checkbox" checked>
-      <span class="toggle-track" aria-hidden="true"><span></span></span>
-    </label>
+    <div class="toolbar-toggles">
+      <label class="category-toggle" for="categoryToggle">
+        <span>Categories</span>
+        <input id="categoryToggle" type="checkbox" checked>
+        <span class="toggle-track" aria-hidden="true"><span></span></span>
+      </label>
+      <label class="category-toggle" for="autoBoxNumberToggle">
+        <span>Auto Box Numbers</span>
+        <input id="autoBoxNumberToggle" type="checkbox" checked>
+        <span class="toggle-track" aria-hidden="true"><span></span></span>
+      </label>
+    </div>
   </header>
 
   <section class="workspace" aria-label="Move organizer">
@@ -44,6 +51,40 @@
         <button type="button" data-photo="retry">Retry</button>
         <button type="button" class="primary" data-photo="yes">Yes</button>
       </div>
+    </section>
+  </div>
+
+  <div id="boxCreateModal" class="modal-backdrop" hidden>
+    <section class="modal-panel box-create-panel" role="dialog" aria-modal="true" aria-labelledby="boxCreateTitle">
+      <div class="modal-heading">
+        <h2 id="boxCreateTitle">New Folder or Box</h2>
+        <p>Add a photo, name it, then choose a unique box number.</p>
+      </div>
+      <div class="box-create-form">
+        <div class="box-create-photo-block">
+          <img id="boxCreatePreview" src="/assets/box-placeholder.svg" alt="Folder or box photo preview">
+          <div class="box-create-photo-actions">
+            <button type="button" data-action="draft-camera">Take Photo</button>
+            <button type="button" data-action="draft-gallery">Choose Photo</button>
+            <button type="button" data-action="draft-clear-photo">Remove Photo</button>
+          </div>
+        </div>
+        <label class="box-create-field" for="boxCreateName">
+          <span>Folder or Box name</span>
+          <input id="boxCreateName" type="text" maxlength="120" placeholder="Name this folder or box">
+        </label>
+        <label class="box-create-field" for="boxCreateNumber">
+          <span>Box number</span>
+          <input id="boxCreateNumber" type="number" inputmode="numeric" min="1" step="1" placeholder="Enter a unique number">
+        </label>
+        <p id="boxCreateError" class="form-error" hidden></p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" data-action="cancel-box-draft">Cancel</button>
+        <button type="button" class="primary" data-action="create-box-draft">Create</button>
+      </div>
+      <input id="boxCreateCameraInput" type="file" accept="image/*" capture="environment" hidden>
+      <input id="boxCreateGalleryInput" type="file" accept="image/*" hidden>
     </section>
   </div>
 
