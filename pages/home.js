@@ -549,7 +549,7 @@
         <button type="button" class="icon-button image-action clear" data-action="clear-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Clear box photo"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="box-details">
-        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" aria-invalid="${nameRequired ? "true" : "false"}" placeholder="Name this folder or box">
+        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" aria-invalid="${nameRequired ? "true" : "false"}" placeholder="Name this box">
         ${nameRequired ? '<p class="box-inline-error">Name required</p>' : ""}
         ${showManualNumberEntry
           ? `<label class="box-number-edit-wrap">
