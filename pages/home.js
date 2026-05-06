@@ -809,6 +809,10 @@
       return false;
     }
 
+    if (box.number === requestedNumber && box.numberInput === String(requestedNumber) && !box.numberError) {
+      return true;
+    }
+
     const previousNumber = box.number;
     box.number = requestedNumber;
     box.numberInput = String(requestedNumber);
@@ -1214,7 +1218,9 @@
   }
 
   async function askConfirm(message) {
-    confirmMessage.textContent = message || "This action will update your organizer.";
+    const nextMessage = message || "This action will update your organizer.";
+    confirmMessage.hidden = nextMessage.trim() === "Are you sure?";
+    confirmMessage.textContent = confirmMessage.hidden ? "" : nextMessage;
     confirmModal.hidden = false;
     return new Promise((resolve) => {
       confirmResolver = resolve;
@@ -2155,6 +2161,10 @@
         return;
       }
 
+      if (event.target.closest("[data-action='choose-available-box-number']")) {
+        return;
+      }
+
       const boxCard = event.target.closest(".box-card");
       if (boxCard && !event.target.closest("[data-skip-select], button, input, label, select")) {
         const boxId = boxCard.dataset.boxId;
@@ -2263,7 +2273,6 @@
       if (availableNumberChoice) {
         event.preventDefault();
         event.stopPropagation();
-        suppressClick = true;
         applyAvailableBoxNumberChoice(availableNumberChoice.dataset.boxId, availableNumberChoice.dataset.boxNumber);
         return;
       }
