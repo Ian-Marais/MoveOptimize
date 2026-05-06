@@ -108,6 +108,31 @@ button {
   white-space: nowrap;
 }
 
+.toolbar-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(20, 35, 55, 0.12);
+  white-space: nowrap;
+}
+
+.toolbar-action-button i {
+  color: var(--blue-dark);
+  font-size: 1rem;
+}
+
+.toolbar-action-button:focus-visible {
+  outline: 2px solid rgba(15, 111, 189, 0.24);
+  outline-offset: 2px;
+}
+
 .category-toggle input {
   position: absolute;
   inline-size: 1px;

@@ -33,6 +33,8 @@
   const organizerList = root.querySelector("#organizerList");
   const categoryToggle = root.querySelector("#categoryToggle");
   const autoBoxNumberToggle = root.querySelector("#autoBoxNumberToggle");
+  const orderDirectionButton = root.querySelector("#orderDirectionButton");
+  const orderDirectionIcon = root.querySelector("#orderDirectionIcon");
   const summary = root.querySelector("[data-summary]");
   const categoryDuplicateWarning = root.querySelector("#categoryDuplicateWarning");
   const bulkActions = root.querySelector("#bulkActions");
@@ -80,6 +82,7 @@
     layout: [],
     meta: {
       autoBoxNumbers: true,
+      boxOrderDirection: "top",
       availableCategoryNumbers: [],
       availableBoxNumbers: [],
       nextBoxNumber: 1,
@@ -162,8 +165,9 @@
     state.categories = Array.isArray(state.categories) ? state.categories : [];
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
-    state.meta = state.meta || { autoBoxNumbers: true, availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
+    state.meta = state.meta || { autoBoxNumbers: true, boxOrderDirection: "top", availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
     state.meta.autoBoxNumbers = state.meta.autoBoxNumbers !== false;
+    state.meta.boxOrderDirection = state.meta.boxOrderDirection === "bottom" ? "bottom" : "top";
     state.meta.availableCategoryNumbers = Array.isArray(state.meta.availableCategoryNumbers) ? state.meta.availableCategoryNumbers : [];
     state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
     state.meta.universalBoxScaleSourceId = typeof state.meta.universalBoxScaleSourceId === "string" ? state.meta.universalBoxScaleSourceId : null;
@@ -528,6 +532,61 @@
     return state.meta.universalBoxScaleSourceId ? findBox(state.meta.universalBoxScaleSourceId) : null;
   }
 
+  function getBoxesInPageOrder() {
+    const orderedBoxes = [];
+    const seenBoxIds = new Set();
+
+    state.layout.forEach((ref) => {
+      if (ref.type === "box") {
+        const box = findBox(ref.id);
+        if (box && !seenBoxIds.has(box.id)) {
+          orderedBoxes.push(box);
+          seenBoxIds.add(box.id);
+        }
+        return;
+      }
+
+      if (ref.type === "category") {
+        boxesForCategory(ref.id).forEach((box) => {
+          if (!seenBoxIds.has(box.id)) {
+            orderedBoxes.push(box);
+            seenBoxIds.add(box.id);
+          }
+        });
+      }
+    });
+
+    state.boxes
+      .filter((box) => !seenBoxIds.has(box.id))
+      .sort(byOrder)
+      .forEach((box) => orderedBoxes.push(box));
+
+    return state.meta.boxOrderDirection === "bottom" ? [...orderedBoxes].reverse() : orderedBoxes;
+  }
+
+  function syncAutoBoxNumbersByDirection() {
+    if (!state.meta.autoBoxNumbers) {
+      return false;
+    }
+
+    let changed = false;
+    const orderedBoxes = getBoxesInPageOrder();
+
+    orderedBoxes.forEach((box, index) => {
+      const nextNumber = index + 1;
+      if (box.number !== nextNumber || box.numberInput !== String(nextNumber) || box.numberError) {
+        box.number = nextNumber;
+        box.numberInput = String(nextNumber);
+        box.numberError = "";
+        changed = true;
+      }
+    });
+
+    state.meta.availableBoxNumbers = [];
+    state.meta.nextBoxNumber = orderedBoxes.length + 1;
+    return changed;
+  }
+
   function getEffectiveBoxScale(box) {
     const universalSourceBox = getUniversalScaleSourceBox();
     return universalSourceBox ? normalizeBoxScale(universalSourceBox.viewScale) : normalizeBoxScale(box.viewScale);
@@ -680,9 +739,14 @@
 
   function renderOrganizer() {
     normalizeState();
+    syncAutoBoxNumbersByDirection();
     cleanupDragArtifacts();
     categoryToggle.checked = state.categoriesVisible;
     autoBoxNumberToggle.checked = state.meta.autoBoxNumbers !== false;
+    orderDirectionButton?.setAttribute("aria-pressed", state.meta.boxOrderDirection === "bottom" ? "true" : "false");
+    if (orderDirectionIcon) {
+      orderDirectionIcon.className = `bi ${state.meta.boxOrderDirection === "bottom" ? "bi-arrow-down" : "bi-arrow-up"}`;
+    }
     const duplicateCategoryIds = getDuplicateCategoryIds();
 
     const boxCount = state.boxes.length;
@@ -863,16 +927,7 @@
   }
 
   function assignNumbersToUnnumberedBoxes() {
-    state.boxes.forEach((box) => {
-      if (Number.isInteger(box.number) && box.number > 0) {
-        return;
-      }
-
-      const boxNumber = claimNextBoxNumber();
-      box.number = boxNumber;
-      box.numberInput = String(boxNumber);
-      box.numberError = "";
-    });
+    syncAutoBoxNumbersByDirection();
   }
 
   function recycleBoxNumbers(boxIds) {
@@ -2397,7 +2452,16 @@
     autoBoxNumberToggle.addEventListener("change", () => {
       state.meta.autoBoxNumbers = autoBoxNumberToggle.checked;
       if (state.meta.autoBoxNumbers) {
-        assignNumbersToUnnumberedBoxes();
+        syncAutoBoxNumbersByDirection();
+      }
+      scheduleSave();
+      renderOrganizer();
+    });
+
+    orderDirectionButton?.addEventListener("click", () => {
+      state.meta.boxOrderDirection = state.meta.boxOrderDirection === "bottom" ? "top" : "bottom";
+      if (state.meta.autoBoxNumbers) {
+        syncAutoBoxNumbersByDirection();
       }
       scheduleSave();
       renderOrganizer();
