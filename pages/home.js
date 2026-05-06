@@ -549,6 +549,16 @@
     const numberError = (typeof box.numberError === "string" && box.numberError)
       || (Boolean(box.manualNumberEntry) && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
     const showManualNumberEntry = Boolean(box.manualNumberEntry);
+    const showAvailableNumberChoices = state.meta.autoBoxNumbers === false
+      && showManualNumberEntry
+      && !String(numberValue).trim()
+      && state.meta.availableBoxNumbers.length > 0;
+    const availableNumberChoices = showAvailableNumberChoices
+      ? state.meta.availableBoxNumbers
+          .slice(0, 8)
+          .map((value) => `<button type="button" class="box-number-choice" data-action="choose-available-box-number" data-box-id="${escapeHtml(box.id)}" data-box-number="${escapeHtml(value)}" data-skip-select="true">${escapeHtml(value)}</button>`)
+          .join("")
+      : "";
 
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
@@ -563,7 +573,10 @@
         ${showManualNumberEntry
           ? `<label class="box-number-edit-wrap">
               <span>Box number</span>
-              <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box number" min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
+              <div class="box-number-input-shell">
+                <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box number" min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
+                ${showAvailableNumberChoices ? `<div class="box-number-popup" role="listbox" aria-label="Available box numbers"><p class="box-number-popup-title">Deleted box numbers</p>${availableNumberChoices}</div>` : ""}
+              </div>
             </label>
             ${numberError ? `<p class="box-inline-error">${escapeHtml(numberError)}</p>` : ""}`
           : `<span class="box-number-label">Box ${escapeHtml(box.number)}</span>`}
@@ -804,6 +817,18 @@
     scheduleSave();
     renderOrganizer();
     return true;
+  }
+
+  function applyAvailableBoxNumberChoice(boxId, boxNumber) {
+    const box = findBox(boxId);
+    if (!box) {
+      return;
+    }
+
+    box.numberInput = boxNumber || "";
+    box.numberError = "";
+    validateAndCommitBoxNumber(box.id, { focusOnError: false });
+    focusBoxNumber(box.id);
   }
 
   function assignNumbersToUnnumberedBoxes() {
@@ -1918,7 +1943,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "choose-available-box-number", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -1994,6 +2019,11 @@
 
     if (action === "create-box-draft") {
       submitBoxDraft();
+      return;
+    }
+
+    if (action === "choose-available-box-number") {
+      applyAvailableBoxNumberChoice(actionElement.dataset.boxId, actionElement.dataset.boxNumber);
       return;
     }
 
@@ -2221,11 +2251,23 @@
     root.addEventListener("focusout", (event) => {
       const target = event.target;
       if (target.dataset.action === "box-number") {
+        if (event.relatedTarget?.closest?.("[data-action='choose-available-box-number']")) {
+          return;
+        }
         validateAndCommitBoxNumber(target.dataset.boxId);
       }
     });
 
     root.addEventListener("pointerdown", (event) => {
+      const availableNumberChoice = event.target.closest("[data-action='choose-available-box-number']");
+      if (availableNumberChoice) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = true;
+        applyAvailableBoxNumberChoice(availableNumberChoice.dataset.boxId, availableNumberChoice.dataset.boxNumber);
+        return;
+      }
+
       const categoryDragFrame = event.target.closest(".category-drag-frame");
       if (!categoryDragFrame) {
         hideRevealedCategoryHandles();

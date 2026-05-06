@@ -589,6 +589,55 @@ button {
   width: 132px;
 }
 
+.box-number-input-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.box-number-popup {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 128px;
+  max-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 35, 55, 0.12);
+  z-index: 4;
+}
+
+.box-number-popup-title {
+  width: 100%;
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.box-number-choice {
+  min-width: 48px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(20, 35, 55, 0.1);
+}
+
+.box-number-choice:hover,
+.box-number-choice:focus-visible {
+  border-color: #b9c7d8;
+  outline: 0;
+}
+
 .box-inline-error {
   margin: -2px 0 0;
   color: var(--danger);
@@ -699,6 +748,10 @@ button {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+
+.confirm-panel {
+  box-shadow: 0 1px 2px rgba(20, 35, 55, 0.1);
 }
 
 .modal-panel h2,
