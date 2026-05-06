@@ -199,6 +199,8 @@
         : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
       box.numberError = typeof box.numberError === "string" ? box.numberError : "";
       box.manualNumberEntry = Boolean(box.manualNumberEntry);
+      box.fragile = Boolean(box.fragile);
+      box.heavy = Boolean(box.heavy);
       if (Number.isInteger(box.number) && box.number > 0) {
         usedBoxNumbers.add(box.number);
         inferredNextBoxNumber = Math.max(inferredNextBoxNumber, box.number + 1);
@@ -553,6 +555,14 @@
       && showManualNumberEntry
       && !String(numberValue).trim()
       && state.meta.availableBoxNumbers.length > 0;
+    const imageBadges = [
+      box.fragile
+        ? `<div class="box-image-badge box-fragile-badge" aria-label="Fragile package"><i class="bi bi-exclamation-diamond-fill" aria-hidden="true"></i><span>Fragile</span></div>`
+        : "",
+      box.heavy
+        ? `<div class="box-image-badge box-heavy-badge" aria-label="Heavy package"><i class="bi bi-box-seam-fill" aria-hidden="true"></i><span>Heavy</span></div>`
+        : ""
+    ].filter(Boolean).join("");
     const availableNumberChoices = showAvailableNumberChoices
       ? state.meta.availableBoxNumbers
           .slice(0, 8)
@@ -563,6 +573,7 @@
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
         <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(photoAlt)} photo" loading="lazy">
+        ${imageBadges ? `<div class="box-image-badges">${imageBadges}</div>` : ""}
         <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
         <button type="button" class="icon-button image-action camera" data-action="camera" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Take box photo"><i class="bi bi-camera-fill"></i></button>
         <button type="button" class="icon-button image-action gallery" data-action="gallery" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Choose box photo"><i class="bi bi-images"></i></button>
@@ -580,6 +591,22 @@
             </label>
             ${numberError ? `<p class="box-inline-error">${escapeHtml(numberError)}</p>` : ""}`
           : `<span class="box-number-label">Box ${escapeHtml(box.number)}</span>`}
+        <div class="box-property-row">
+          <label class="box-property-toggle">
+            <span class="box-property-toggle-shell">
+              <input type="checkbox" data-action="box-fragile" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Mark package as fragile" ${box.fragile ? "checked" : ""}>
+              <span class="box-property-toggle-box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+            </span>
+            <span class="box-property-label">Fragile</span>
+          </label>
+          <label class="box-property-toggle">
+            <span class="box-property-toggle-shell">
+              <input type="checkbox" data-action="box-heavy" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Mark package as heavy" ${box.heavy ? "checked" : ""}>
+              <span class="box-property-toggle-box box-property-toggle-box-heavy" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+            </span>
+            <span class="box-property-label">Heavy</span>
+          </label>
+        </div>
         <div class="box-scale-controls">
           <label class="box-scale-select-wrap">
             <i class="bi bi-zoom-in"></i>
@@ -1097,7 +1124,9 @@
         name: options.file.name,
         updatedAt: Date.now()
       } : null,
-      viewScale: 1
+      viewScale: 1,
+      fragile: Boolean(options.fragile),
+      heavy: Boolean(options.heavy)
     };
 
     insertNewBox(insertionContext, box);
@@ -2227,6 +2256,26 @@
 
       if (target.dataset.action === "box-number") {
         validateAndCommitBoxNumber(target.dataset.boxId);
+        return;
+      }
+
+      if (target.dataset.action === "box-fragile") {
+        const box = findBox(target.dataset.boxId);
+        if (box) {
+          box.fragile = target.checked;
+          scheduleSave();
+          renderOrganizer();
+        }
+        return;
+      }
+
+      if (target.dataset.action === "box-heavy") {
+        const box = findBox(target.dataset.boxId);
+        if (box) {
+          box.heavy = target.checked;
+          scheduleSave();
+          renderOrganizer();
+        }
         return;
       }
 
