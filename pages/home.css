@@ -308,6 +308,18 @@ button {
   align-items: stretch;
   width: max-content;
   max-width: 100%;
+  cursor: pointer;
+}
+
+.box-content-card.selected {
+  filter: none;
+}
+
+.box-content-card.selected .box-content-photo,
+.box-content-card.selected .box-content-tag-editor {
+  border-color: var(--blue);
+  background: #f0f8ff;
+  box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16), 0 8px 22px rgba(20, 35, 55, 0.12);
 }
 
 .box-content-photo {
@@ -330,7 +342,7 @@ button {
 }
 
 .box-content-tag-editor {
-  --tag-toggle-width: 42px;
+  --tag-toggle-width: 34px;
   --tag-body-width: 186px;
   display: flex;
   align-items: stretch;
@@ -353,7 +365,7 @@ button {
 .box-content-tag-body {
   flex: 0 0 var(--tag-body-width);
   display: grid;
-  align-content: start;
+  align-content: stretch;
   gap: 10px;
   width: var(--tag-body-width);
   min-width: 0;
@@ -361,6 +373,14 @@ button {
   padding: 12px;
   opacity: 1;
   transition: width 220ms ease, max-width 220ms ease, padding 220ms ease, opacity 160ms ease;
+}
+
+.box-content-tag-body.has-tags {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.box-content-tag-body.no-tags {
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .box-content-tag-editor.collapsed .box-content-tag-body {
@@ -402,13 +422,17 @@ button {
 }
 
 .box-content-tag-input {
+  display: block;
   width: 100%;
   min-width: 0;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 0;
+  height: 100%;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 9px;
   font: inherit;
+  align-self: stretch;
+  resize: none;
 }
 
 .box-content-tag-toggle {
@@ -421,7 +445,7 @@ button {
 }
 
 .box-content-tag-toggle i {
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
 .box-content-empty {
@@ -759,7 +783,7 @@ button {
   grid-template-columns: max-content minmax(0, 1fr);
   gap: calc(12px + ((var(--box-scale) - 1) * 18px));
   align-items: stretch;
-  min-height: calc(132px + ((var(--box-scale) - 1) * 124px));
+  min-height: calc(99px + ((var(--box-scale) - 1) * 93px));
   margin: 8px 0 0;
   padding: calc(10px + ((var(--box-scale) - 1) * 6px));
   border: 1px solid var(--line);
@@ -782,10 +806,10 @@ button {
 
 .box-image-shell {
   position: relative;
-  width: calc(220px + ((var(--box-scale) - 1) * 120px));
-  max-width: min(100%, calc(220px + ((var(--box-scale) - 1) * 120px)));
+  width: calc(165px + ((var(--box-scale) - 1) * 90px));
+  max-width: min(100%, calc(165px + ((var(--box-scale) - 1) * 90px)));
   min-width: 0;
-  min-height: calc(132px + ((var(--box-scale) - 1) * 108px));
+  min-height: calc(99px + ((var(--box-scale) - 1) * 81px));
   overflow: hidden;
   border-radius: 6px;
   background: #e9f0f7;
@@ -843,42 +867,46 @@ button {
 
 .image-action {
   position: absolute;
-  width: 38px;
-  min-width: 38px;
-  min-height: 38px;
-  height: 38px;
+  width: 29px;
+  min-width: 29px;
+  min-height: 29px;
+  height: 29px;
   border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 4px;
+  border-radius: 3px;
   background: rgba(15, 32, 48, 0.78);
   color: #fff;
 }
 
+.image-action i {
+  font-size: 0.75rem;
+}
+
 .image-action.camera {
-  left: 8px;
-  bottom: 8px;
+  left: 6px;
+  bottom: 6px;
 }
 
 .image-action.enlarge {
-  left: 8px;
-  top: 8px;
-  width: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  height: 34px;
+  left: 6px;
+  top: 6px;
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  height: 26px;
 }
 
 .image-action.gallery {
-  right: 8px;
-  bottom: 8px;
+  right: 6px;
+  bottom: 6px;
 }
 
 .image-action.clear {
-  right: 8px;
-  top: 8px;
-  width: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  height: 34px;
+  right: 6px;
+  top: 6px;
+  width: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  height: 26px;
 }
 
 .box-details {
@@ -1526,13 +1554,13 @@ button {
 
   .box-card {
     grid-template-columns: max-content minmax(0, 1fr);
-    min-height: calc(178px + ((var(--box-scale) - 1) * 118px));
+    min-height: calc(134px + ((var(--box-scale) - 1) * 89px));
     padding: 12px;
   }
 
   .box-image-shell {
-    width: calc(220px + ((var(--box-scale) - 1) * 120px));
-    max-width: min(100%, calc(220px + ((var(--box-scale) - 1) * 120px)));
+    width: calc(165px + ((var(--box-scale) - 1) * 90px));
+    max-width: min(100%, calc(165px + ((var(--box-scale) - 1) * 90px)));
   }
 
   .box-details input {
@@ -1551,7 +1579,7 @@ button {
   }
 
   .box-image-shell {
-    width: calc(260px + ((var(--box-scale) - 1) * 140px));
-    max-width: min(100%, calc(260px + ((var(--box-scale) - 1) * 140px)));
+    width: calc(195px + ((var(--box-scale) - 1) * 105px));
+    max-width: min(100%, calc(195px + ((var(--box-scale) - 1) * 105px)));
   }
 }

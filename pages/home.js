@@ -68,6 +68,8 @@
   let saveTimer;
   let activeLineKey = "root-end";
   let selectedBoxIds = new Set();
+  let selectedContentImageKeys = new Set();
+  let pendingSearchJump = null;
   let imageUrls = new Map();
   let pendingPhoto = null;
   let activePhotoBoxId = null;
@@ -485,6 +487,18 @@
     return [boxId];
   }
 
+  function toggleBoxSelection(boxId) {
+    if (!findBox(boxId)) {
+      return;
+    }
+
+    if (selectedBoxIds.has(boxId)) {
+      selectedBoxIds.delete(boxId);
+    } else {
+      selectedBoxIds.add(boxId);
+    }
+  }
+
   function revealCategoryHandle(frame) {
     if (!frame) {
       return;
@@ -547,6 +561,11 @@
     return `content:${boxId}:${imageId}`;
   }
 
+  function parseContentImageKey(key) {
+    const match = /^content:([^:]+):(.+)$/.exec(String(key || ""));
+    return match ? { boxId: match[1], imageId: match[2] } : null;
+  }
+
   function getContentImageSrc(boxId, image) {
     if (!image?.blob) {
       return PLACEHOLDER_IMAGE;
@@ -600,6 +619,166 @@
     image.tagDraft = segments.at(-1)?.trimStart() || "";
     scheduleSave();
     return true;
+  }
+
+  function queueSearchJump(jump) {
+    pendingSearchJump = jump;
+  }
+
+  function getSearchTargetElement(jump) {
+    if (!jump) {
+      return null;
+    }
+
+    if (jump.type === "box-card") {
+      return organizerList.querySelector(`.box-card[data-box-id="${CSS.escape(jump.boxId)}"]`);
+    }
+
+    if (jump.type === "tag") {
+      return organizerList.querySelector(`.box-content-tag[data-box-id="${CSS.escape(jump.boxId)}"][data-image-id="${CSS.escape(jump.imageId)}"][data-tag-value="${CSS.escape(jump.tagValue)}"]`);
+    }
+
+    if (jump.type === "items") {
+      return organizerList.querySelector(`[data-action="box-items"][data-box-id="${CSS.escape(jump.boxId)}"]`);
+    }
+
+    return null;
+  }
+
+  function applyPendingSearchJump() {
+    if (!pendingSearchJump) {
+      return;
+    }
+
+    const jump = pendingSearchJump;
+    pendingSearchJump = null;
+
+    requestAnimationFrame(() => {
+      const target = getSearchTargetElement(jump);
+      if (!target) {
+        return;
+      }
+
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (typeof target.focus === "function" && (target.matches("textarea") || target.matches("input"))) {
+        target.focus();
+      }
+    });
+  }
+
+  function navigateToSearchPage(pageBoxId, jump) {
+    queueSearchJump(jump);
+
+    if (pageBoxId) {
+      openBoxView(pageBoxId);
+      return;
+    }
+
+    state.meta.activeBoxViewId = null;
+    selectedBoxIds.clear();
+    clearContentImageSelection();
+    scheduleSave();
+    renderOrganizer();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function findSearchMatch(query) {
+    for (const box of state.boxes) {
+      const boxName = (box.name || "").trim().toLowerCase();
+      const displayNumber = String(getBoxDisplayNumber(box) || "").toLowerCase();
+      const boxLabel = getBoxLabel(box).toLowerCase();
+
+      if ((boxName && boxName.includes(query)) || (displayNumber && displayNumber.includes(query)) || boxLabel.includes(query)) {
+        return {
+          pageBoxId: box.parentBoxId || null,
+          jump: {
+            type: "box-card",
+            boxId: box.id
+          }
+        };
+      }
+
+      for (const image of box.contentImages) {
+        const matchedTag = image.tags.find((tag) => tag.toLowerCase().includes(query));
+        if (matchedTag) {
+          return {
+            pageBoxId: box.id,
+            jump: {
+              type: "tag",
+              boxId: box.id,
+              imageId: image.id,
+              tagValue: matchedTag
+            }
+          };
+        }
+      }
+
+      const hasMatchingItem = box.itemsText
+        .split(/\r?\n/)
+        .some((line) => line.trim().toLowerCase().includes(query));
+
+      if (hasMatchingItem) {
+        return {
+          pageBoxId: box.id,
+          jump: {
+            type: "items",
+            boxId: box.id
+          }
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function clearContentImageSelection() {
+    selectedContentImageKeys.clear();
+  }
+
+  function toggleContentImageSelection(boxId, imageId) {
+    const key = getContentImageKey(boxId, imageId);
+    if (selectedContentImageKeys.has(key)) {
+      selectedContentImageKeys.delete(key);
+    } else {
+      selectedContentImageKeys.add(key);
+    }
+  }
+
+  function removeSelectedContentImages() {
+    const groupedImageIds = new Map();
+
+    [...selectedContentImageKeys].forEach((key) => {
+      const parsed = parseContentImageKey(key);
+      if (!parsed) {
+        return;
+      }
+      const imageIds = groupedImageIds.get(parsed.boxId) || new Set();
+      imageIds.add(parsed.imageId);
+      groupedImageIds.set(parsed.boxId, imageIds);
+    });
+
+    groupedImageIds.forEach((imageIds, boxId) => {
+      const box = findBox(boxId);
+      if (!box) {
+        return;
+      }
+
+      box.contentImages = box.contentImages.filter((image) => {
+        if (!imageIds.has(image.id)) {
+          return true;
+        }
+
+        const key = getContentImageKey(boxId, image.id);
+        const currentUrl = imageUrls.get(key);
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl);
+          imageUrls.delete(key);
+        }
+        return false;
+      });
+    });
+
+    clearContentImageSelection();
   }
 
   function boxesForCategory(categoryId) {
@@ -717,16 +896,18 @@
     }
 
     return `<div class="box-content-gallery">${box.contentImages.map((image) => {
+      const imageKey = getContentImageKey(box.id, image.id);
+      const selected = selectedContentImageKeys.has(imageKey);
       const tagsHtml = image.tags.map((tag) => `<span class="box-content-tag">${escapeHtml(tag)}</span>`).join("");
-      return `<div class="box-content-card ${image.tagsCollapsed ? "collapsed" : ""}">
+      return `<div class="box-content-card ${selected ? "selected" : ""} ${image.tagsCollapsed ? "collapsed" : ""}" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}">
         <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
         <div class="box-content-tag-editor ${image.tagsCollapsed ? "collapsed" : ""}">
-          <div class="box-content-tag-body">
-            <div class="box-content-tag-list${tagsHtml ? "" : " empty"}">${tagsHtml || '<span class="box-content-tag-placeholder">Tags appear here after each comma.</span>'}</div>
-            <input type="text" class="box-content-tag-input" data-action="content-image-tag-input" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" value="${escapeHtml(image.tagDraft || "")}" placeholder="Type tags separated by commas" aria-label="Content photo tags for ${escapeHtml(getBoxLabel(box))}">
+          <div class="box-content-tag-body ${tagsHtml ? "has-tags" : "no-tags"}">
+            ${tagsHtml ? `<div class="box-content-tag-list">${image.tags.map((tag) => `<span class="box-content-tag" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" data-tag-value="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
+            <textarea class="box-content-tag-input" data-action="content-image-tag-input" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" placeholder="Type tags separated by commas" aria-label="Content photo tags for ${escapeHtml(getBoxLabel(box))}">${escapeHtml(image.tagDraft || "")}</textarea>
           </div>
           <button type="button" class="box-content-tag-toggle" data-action="toggle-content-image-tags" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" aria-label="${image.tagsCollapsed ? "Expand" : "Collapse"} content photo tags">
-            <i class="bi ${image.tagsCollapsed ? "bi-chevron-left" : "bi-chevron-right"}" aria-hidden="true"></i>
+            <i class="bi ${image.tagsCollapsed ? "bi-chevron-right" : "bi-chevron-left"}" aria-hidden="true"></i>
           </button>
         </div>
       </div>`;
@@ -1065,8 +1246,11 @@
     if (currentViewBox) {
       organizerList.innerHTML = content;
     }
-    bulkActions.hidden = currentViewBox ? true : selectedBoxIds.size === 0;
+    bulkActions.hidden = currentViewBox
+      ? (selectedContentImageKeys.size === 0 && selectedBoxIds.size === 0)
+      : selectedBoxIds.size === 0;
     renderCategoryDeleteOverlay();
+    applyPendingSearchJump();
   }
 
   function getRootInsertIndex(context) {
@@ -1207,6 +1391,7 @@
 
     state.meta.activeBoxViewId = box.id;
     selectedBoxIds.clear();
+    clearContentImageSelection();
     scheduleSave();
     renderOrganizer();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1214,6 +1399,7 @@
 
   function closeBoxView() {
     state.meta.activeBoxViewId = null;
+    clearContentImageSelection();
     scheduleSave();
     renderOrganizer();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1252,18 +1438,18 @@
     const rawQuery = itemSearchInput?.value.trim() || "";
     const query = rawQuery.toLowerCase();
     if (!query) {
-      setSearchStatus("Enter an item name to search.");
+      setSearchStatus("Enter a tag, box name, box number, or item name to search.");
       return;
     }
 
-    const matchedBox = state.boxes.find((box) => box.itemsText.split(/\r?\n/).some((line) => line.trim().toLowerCase().includes(query)));
-    if (!matchedBox) {
-      setSearchStatus(`No item found for \"${rawQuery}\".`);
+    const match = findSearchMatch(query);
+    if (!match) {
+      setSearchStatus(`No match found for \"${rawQuery}\".`);
       return;
     }
 
     setSearchStatus("");
-    openBoxView(matchedBox.id);
+    navigateToSearchPage(match.pageBoxId, match.jump);
   }
 
   function assignNumbersToUnnumberedBoxes() {
@@ -2567,18 +2753,33 @@
 
     if (action === "bulk-delete") {
       askConfirm("Are you sure?").then((confirmed) => {
-        if (confirmed) {
+        if (!confirmed) {
+          return;
+        }
+
+        if (getCurrentViewBox() && selectedBoxIds.size > 0) {
           removeBoxes([...selectedBoxIds]);
           selectedBoxIds.clear();
-          scheduleSave();
-          renderOrganizer();
+        } else if (getCurrentViewBox() && selectedContentImageKeys.size > 0) {
+          removeSelectedContentImages();
+        } else {
+          removeBoxes([...selectedBoxIds]);
+          selectedBoxIds.clear();
         }
+
+        scheduleSave();
+        renderOrganizer();
       });
       return;
     }
 
     if (action === "clear-selection") {
-      selectedBoxIds.clear();
+      if (getCurrentViewBox()) {
+        selectedBoxIds.clear();
+        clearContentImageSelection();
+      } else {
+        selectedBoxIds.clear();
+      }
       renderOrganizer();
       return;
     }
@@ -2682,10 +2883,29 @@
         return;
       }
 
-      const boxCard = event.target.closest(".box-card");
-      if (boxCard && !event.target.closest("[data-skip-select], button, input, label, select, textarea")) {
-        openBoxView(boxCard.dataset.boxId);
+      const contentImageCard = event.target.closest(".box-content-card");
+      if (contentImageCard && !event.target.closest("button, input, label, select, textarea")) {
+        selectedBoxIds.clear();
+        toggleContentImageSelection(contentImageCard.dataset.boxId, contentImageCard.dataset.imageId);
+        renderOrganizer();
         return;
+      }
+
+      const boxCard = event.target.closest(".box-card");
+      if (boxCard) {
+        const clickedImageShell = event.target.closest(".box-image-shell");
+        if (clickedImageShell && !event.target.closest("[data-skip-select], button, input, label, select, textarea")) {
+          openBoxView(boxCard.dataset.boxId);
+          return;
+        }
+
+        const clickedBoxDetails = event.target.closest(".box-details");
+        if (clickedBoxDetails && !event.target.closest("[data-skip-select], button, input, label, select, textarea")) {
+          clearContentImageSelection();
+          toggleBoxSelection(boxCard.dataset.boxId);
+          renderOrganizer();
+          return;
+        }
       }
 
       handleAction(event);
