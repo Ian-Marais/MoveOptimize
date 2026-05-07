@@ -35,11 +35,16 @@
   const autoBoxNumberToggle = root.querySelector("#autoBoxNumberToggle");
   const orderDirectionButton = root.querySelector("#orderDirectionButton");
   const orderDirectionIcon = root.querySelector("#orderDirectionIcon");
+  const itemSearchInput = root.querySelector("#itemSearchInput");
+  const itemSearchButton = root.querySelector("#itemSearchButton");
+  const searchStatus = root.querySelector("#searchStatus");
   const summary = root.querySelector("[data-summary]");
   const categoryDuplicateWarning = root.querySelector("#categoryDuplicateWarning");
   const bulkActions = root.querySelector("#bulkActions");
   const cameraInput = root.querySelector("#cameraInput");
   const galleryInput = root.querySelector("#galleryInput");
+  const contentCameraInput = root.querySelector("#contentCameraInput");
+  const contentGalleryInput = root.querySelector("#contentGalleryInput");
   const confirmModal = root.querySelector("#confirmModal");
   const confirmMessage = root.querySelector("#confirmMessage");
   const photoModal = root.querySelector("#photoModal");
@@ -66,6 +71,7 @@
   let imageUrls = new Map();
   let pendingPhoto = null;
   let activePhotoBoxId = null;
+  let activeContentBoxId = null;
   let confirmResolver = null;
   let deletionCategoryId = null;
   let overlaySelectedIds = new Set();
@@ -74,6 +80,7 @@
   let suppressClick = false;
   let categoryDragCollapseState = null;
   let pendingBoxDraft = null;
+  let searchStatusMessage = "";
 
   const emptyState = () => ({
     categoriesVisible: true,
@@ -83,6 +90,7 @@
     meta: {
       autoBoxNumbers: true,
       boxOrderDirection: "top",
+      activeBoxViewId: null,
       availableCategoryNumbers: [],
       availableBoxNumbers: [],
       nextBoxNumber: 1,
@@ -112,11 +120,20 @@
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
-  const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => box.id !== excludingBoxId && box.number === boxNumber);
+  const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => !box.parentBoxId && box.id !== excludingBoxId && box.number === boxNumber);
   const normalizeBoxScale = (value) => {
     const parsed = Number.parseFloat(value);
     return BOX_SCALE_OPTIONS.includes(parsed) ? parsed : 1;
   };
+
+  function setSearchStatus(message = "") {
+    searchStatusMessage = message;
+    if (!searchStatus) {
+      return;
+    }
+    searchStatus.hidden = !message;
+    searchStatus.textContent = message;
+  }
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -165,14 +182,16 @@
     state.categories = Array.isArray(state.categories) ? state.categories : [];
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
-    state.meta = state.meta || { autoBoxNumbers: true, boxOrderDirection: "top", availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
+    state.meta = state.meta || { autoBoxNumbers: true, boxOrderDirection: "top", activeBoxViewId: null, availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
     state.meta.autoBoxNumbers = state.meta.autoBoxNumbers !== false;
     state.meta.boxOrderDirection = state.meta.boxOrderDirection === "bottom" ? "bottom" : "top";
+    state.meta.activeBoxViewId = typeof state.meta.activeBoxViewId === "string" ? state.meta.activeBoxViewId : null;
     state.meta.availableCategoryNumbers = Array.isArray(state.meta.availableCategoryNumbers) ? state.meta.availableCategoryNumbers : [];
     state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
     state.meta.universalBoxScaleSourceId = typeof state.meta.universalBoxScaleSourceId === "string" ? state.meta.universalBoxScaleSourceId : null;
     state.categoriesVisible = state.categoriesVisible !== false;
 
+    const boxIds = new Set(state.boxes.map((box) => box.id));
     const categoryIds = new Set(state.categories.map((category) => category.id));
     const usedCategoryNumbers = new Set();
     let inferredNextCategoryNumber = 1;
@@ -184,20 +203,28 @@
         box.categoryId = null;
       }
 
+      box.parentBoxId = typeof box.parentBoxId === "string" && boxIds.has(box.parentBoxId) && box.parentBoxId !== box.id
+        ? box.parentBoxId
+        : null;
+
+      if (box.parentBoxId) {
+        box.categoryId = null;
+      }
+
       const parsedBoxNumber = Number.parseInt(box.numberInput, 10);
-      let boxNumber = Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
-      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && Number.isInteger(parsedBoxNumber) && parsedBoxNumber > 0 && !usedBoxNumbers.has(parsedBoxNumber)) {
+      let boxNumber = !box.parentBoxId && Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
+      if (!box.parentBoxId && (!boxNumber || usedBoxNumbers.has(boxNumber)) && Number.isInteger(parsedBoxNumber) && parsedBoxNumber > 0 && !usedBoxNumbers.has(parsedBoxNumber)) {
         boxNumber = parsedBoxNumber;
       }
 
-      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && !box.manualNumberEntry) {
+      if (!box.parentBoxId && (!boxNumber || usedBoxNumbers.has(boxNumber)) && !box.manualNumberEntry) {
         while (usedBoxNumbers.has(inferredNextBoxNumber)) {
           inferredNextBoxNumber += 1;
         }
         boxNumber = inferredNextBoxNumber;
       }
 
-      box.number = Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null;
+      box.number = !box.parentBoxId && Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null;
       box.numberInput = typeof box.numberInput === "string"
         ? box.numberInput
         : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
@@ -205,7 +232,18 @@
       box.manualNumberEntry = Boolean(box.manualNumberEntry);
       box.fragile = Boolean(box.fragile);
       box.heavy = Boolean(box.heavy);
-      if (Number.isInteger(box.number) && box.number > 0) {
+      box.itemsText = typeof box.itemsText === "string" ? box.itemsText : "";
+      box.contentImages = Array.isArray(box.contentImages) ? box.contentImages.filter(Boolean).map((image, imageIndex) => ({
+        id: typeof image.id === "string" ? image.id : uid(`content-image-${imageIndex}`),
+        blob: image.blob || null,
+        type: image.type || "image/jpeg",
+        name: image.name || `content-${imageIndex + 1}`,
+        updatedAt: image.updatedAt || Date.now(),
+        tags: Array.isArray(image.tags) ? image.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [],
+        tagDraft: typeof image.tagDraft === "string" ? image.tagDraft : "",
+        tagsCollapsed: Boolean(image.tagsCollapsed)
+      })).filter((image) => image.blob) : [];
+      if (!box.parentBoxId && Number.isInteger(box.number) && box.number > 0) {
         usedBoxNumbers.add(box.number);
         inferredNextBoxNumber = Math.max(inferredNextBoxNumber, box.number + 1);
       }
@@ -216,6 +254,10 @@
 
     if (state.meta.universalBoxScaleSourceId && !findBox(state.meta.universalBoxScaleSourceId)) {
       state.meta.universalBoxScaleSourceId = null;
+    }
+
+    if (state.meta.activeBoxViewId && !findBox(state.meta.activeBoxViewId)) {
+      state.meta.activeBoxViewId = null;
     }
 
     state.meta.availableBoxNumbers = [...new Set(
@@ -272,7 +314,7 @@
       }
 
       const box = findBox(ref.id);
-      if (ref.type === "box" && box && !box.categoryId) {
+      if (ref.type === "box" && box && !box.categoryId && !box.parentBoxId) {
         seenRefs.add(key);
         return true;
       }
@@ -288,7 +330,7 @@
       }
     });
 
-    state.boxes.filter((box) => !box.categoryId).sort(byOrder).forEach((box) => {
+    state.boxes.filter((box) => !box.categoryId && !box.parentBoxId).sort(byOrder).forEach((box) => {
       const key = `box:${box.id}`;
       if (!seenRefs.has(key)) {
         state.layout.push({ type: "box", id: box.id });
@@ -501,8 +543,232 @@
     }
   }
 
+  function getContentImageKey(boxId, imageId) {
+    return `content:${boxId}:${imageId}`;
+  }
+
+  function getContentImageSrc(boxId, image) {
+    if (!image?.blob) {
+      return PLACEHOLDER_IMAGE;
+    }
+
+    const key = getContentImageKey(boxId, image.id);
+    if (!imageUrls.has(key)) {
+      imageUrls.set(key, URL.createObjectURL(image.blob));
+    }
+
+    return imageUrls.get(key);
+  }
+
+  function revokeContentImages(boxId) {
+    [...imageUrls.keys()]
+      .filter((key) => key.startsWith(`content:${boxId}:`))
+      .forEach((key) => {
+        URL.revokeObjectURL(imageUrls.get(key));
+        imageUrls.delete(key);
+      });
+  }
+
+  function findContentImage(boxId, imageId) {
+    const box = findBox(boxId);
+    if (!box) {
+      return null;
+    }
+
+    const image = box.contentImages.find((entry) => entry.id === imageId);
+    return image ? { box, image } : null;
+  }
+
+  function applyContentImageTagInput(boxId, imageId, rawValue) {
+    const match = findContentImage(boxId, imageId);
+    if (!match) {
+      return false;
+    }
+
+    const { image } = match;
+    const value = String(rawValue || "");
+    const segments = value.split(",");
+    const completedTags = segments.slice(0, -1).map((segment) => segment.trim()).filter(Boolean);
+
+    if (!completedTags.length) {
+      image.tagDraft = value;
+      scheduleSave();
+      return false;
+    }
+
+    image.tags = [...image.tags, ...completedTags];
+    image.tagDraft = segments.at(-1)?.trimStart() || "";
+    scheduleSave();
+    return true;
+  }
+
   function boxesForCategory(categoryId) {
-    return state.boxes.filter((box) => (box.categoryId || null) === (categoryId || null)).sort(byOrder);
+    return state.boxes.filter((box) => !box.parentBoxId && (box.categoryId || null) === (categoryId || null)).sort(byOrder);
+  }
+
+  function getChildBoxes(parentBoxId = null) {
+    return state.boxes.filter((box) => (box.parentBoxId || null) === (parentBoxId || null)).sort(byOrder);
+  }
+
+  function getDirectionalBoxes(boxes) {
+    return state.meta.boxOrderDirection === "bottom" ? [...boxes].reverse() : [...boxes];
+  }
+
+  function getOrderedChildBoxes(parentBoxId) {
+    return getDirectionalBoxes(getChildBoxes(parentBoxId));
+  }
+
+  function getCurrentViewBox() {
+    return state.meta.activeBoxViewId ? findBox(state.meta.activeBoxViewId) : null;
+  }
+
+  function getBoxDisplayNumber(box) {
+    if (!box) {
+      return "";
+    }
+
+    if (!box.parentBoxId) {
+      return Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "";
+    }
+
+    const parentBox = findBox(box.parentBoxId);
+    const parentNumber = getBoxDisplayNumber(parentBox);
+    const siblingIndex = getOrderedChildBoxes(box.parentBoxId).findIndex((childBox) => childBox.id === box.id);
+    return siblingIndex >= 0
+      ? `${parentNumber || "Box"}.${siblingIndex + 1}`.replace(/^Box\./, "")
+      : parentNumber;
+  }
+
+  function getBoxLabel(box) {
+    const displayNumber = getBoxDisplayNumber(box);
+    return displayNumber ? `Box no.${displayNumber}` : (box.name?.trim() || "Box");
+  }
+
+  function getBoxBreadcrumbs(boxId) {
+    const trail = [];
+    let current = findBox(boxId);
+
+    while (current) {
+      trail.unshift(current);
+      current = current.parentBoxId ? findBox(current.parentBoxId) : null;
+    }
+
+    return trail;
+  }
+
+  function getRootBoxesInPageOrder() {
+    const orderedBoxes = [];
+    const seenBoxIds = new Set();
+
+    state.layout.forEach((ref) => {
+      if (ref.type === "box") {
+        const box = findBox(ref.id);
+        if (box && !box.parentBoxId && !seenBoxIds.has(box.id)) {
+          orderedBoxes.push(box);
+          seenBoxIds.add(box.id);
+        }
+        return;
+      }
+
+      if (ref.type === "category") {
+        boxesForCategory(ref.id).forEach((box) => {
+          if (!seenBoxIds.has(box.id)) {
+            orderedBoxes.push(box);
+            seenBoxIds.add(box.id);
+          }
+        });
+      }
+    });
+
+    state.boxes
+      .filter((box) => !box.parentBoxId && !box.categoryId && !seenBoxIds.has(box.id))
+      .sort(byOrder)
+      .forEach((box) => orderedBoxes.push(box));
+
+    return getDirectionalBoxes(orderedBoxes);
+  }
+
+  function syncAutoBoxNumbersByDirection() {
+    if (!state.meta.autoBoxNumbers) {
+      return false;
+    }
+
+    let changed = false;
+    const orderedBoxes = getRootBoxesInPageOrder();
+
+    orderedBoxes.forEach((box, index) => {
+      const nextNumber = index + 1;
+      if (box.number !== nextNumber || box.numberInput !== String(nextNumber) || box.numberError) {
+        box.number = nextNumber;
+        box.numberInput = String(nextNumber);
+        box.numberError = "";
+        changed = true;
+      }
+    });
+
+    state.meta.availableBoxNumbers = [];
+    state.meta.nextBoxNumber = orderedBoxes.length + 1;
+    return changed;
+  }
+
+  function renderContentImages(box) {
+    if (!box.contentImages.length) {
+      return `<p class="box-content-empty">No content photos added yet.</p>`;
+    }
+
+    return `<div class="box-content-gallery">${box.contentImages.map((image) => {
+      const tagsHtml = image.tags.map((tag) => `<span class="box-content-tag">${escapeHtml(tag)}</span>`).join("");
+      return `<div class="box-content-card ${image.tagsCollapsed ? "collapsed" : ""}">
+        <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
+        <div class="box-content-tag-editor ${image.tagsCollapsed ? "collapsed" : ""}">
+          <div class="box-content-tag-body">
+            <div class="box-content-tag-list${tagsHtml ? "" : " empty"}">${tagsHtml || '<span class="box-content-tag-placeholder">Tags appear here after each comma.</span>'}</div>
+            <input type="text" class="box-content-tag-input" data-action="content-image-tag-input" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" value="${escapeHtml(image.tagDraft || "")}" placeholder="Type tags separated by commas" aria-label="Content photo tags for ${escapeHtml(getBoxLabel(box))}">
+          </div>
+          <button type="button" class="box-content-tag-toggle" data-action="toggle-content-image-tags" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" aria-label="${image.tagsCollapsed ? "Expand" : "Collapse"} content photo tags">
+            <i class="bi ${image.tagsCollapsed ? "bi-chevron-left" : "bi-chevron-right"}" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>`;
+    }).join("")}</div>`;
+  }
+
+  function renderBoxView(box) {
+    const breadcrumbs = getBoxBreadcrumbs(box.id);
+    const childBoxes = getOrderedChildBoxes(box.id);
+    const breadcrumbHtml = breadcrumbs.map((crumb, index) => index === breadcrumbs.length - 1 ? `<span>${escapeHtml(getBoxLabel(crumb))}</span>` : `<button type="button" data-action="open-box" data-box-id="${escapeHtml(crumb.id)}">${escapeHtml(getBoxLabel(crumb))}</button>`).join("<span>/</span>");
+
+    return `<section class="box-view-shell">
+      <div class="box-view-header">
+        <button type="button" class="toolbar-action-button box-view-back" data-action="box-view-back">${box.parentBoxId ? "Back" : "Root"}</button>
+        <div class="box-view-heading">
+          <div class="box-view-breadcrumbs"><button type="button" data-action="box-view-root">Home</button>${breadcrumbs.length ? `<span>/</span>${breadcrumbHtml}` : ""}</div>
+          <h2>${escapeHtml(getBoxLabel(box))}</h2>
+        </div>
+      </div>
+      <section class="box-content-panel">
+        <div class="box-content-panel-header">
+          <h3>Box Content Photos</h3>
+          <div class="box-content-actions">
+            <button type="button" class="toolbar-action-button" data-action="content-camera" data-box-id="${escapeHtml(box.id)}">Take Photo</button>
+            <button type="button" class="toolbar-action-button" data-action="content-gallery" data-box-id="${escapeHtml(box.id)}">Upload Photo</button>
+          </div>
+        </div>
+        ${renderContentImages(box)}
+      </section>
+      <section class="nested-boxes-section">
+        <div class="nested-boxes-header">
+          <h3>Boxes Inside</h3>
+          <button type="button" class="toolbar-action-button" data-action="new-box-inside" data-box-id="${escapeHtml(box.id)}">New Box Inside</button>
+        </div>
+        <div class="nested-box-list">${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id }, { hideInsertLine: true })).join("") : `<p class="box-content-empty">No boxes inside yet.</p>`}</div>
+      </section>
+      <section class="box-items-dock">
+        <label class="box-items-label" for="boxItemsTextarea">Items in ${escapeHtml(getBoxLabel(box))}</label>
+        <textarea id="boxItemsTextarea" data-action="box-items" data-box-id="${escapeHtml(box.id)}" placeholder="Type one item per line">${escapeHtml(box.itemsText || "")}</textarea>
+        <p class="box-items-help">Each line is searchable from the search bar at the top.</p>
+      </section>
+    </section>`;
   }
 
   function getDuplicateCategoryIds() {
@@ -598,18 +864,18 @@
 
   function renderBox(box, context, options = {}) {
     const selected = selectedBoxIds.has(box.id);
-    const category = box.categoryId ? findCategory(box.categoryId) : null;
     const boxScale = normalizeBoxScale(box.viewScale);
     const effectiveScale = getEffectiveBoxScale(box);
     const isUniversalSource = state.meta.universalBoxScaleSourceId === box.id;
     const universalScaleLocked = Boolean(state.meta.universalBoxScaleSourceId && !isUniversalSource);
     const boxName = typeof box.name === "string" ? box.name : "";
-    const boxNumberLabel = Number.isInteger(box.number) && box.number > 0 ? `Box ${box.number}` : "Box";
+    const displayNumber = getBoxDisplayNumber(box);
+    const boxNumberLabel = displayNumber ? `Box ${displayNumber}` : "Box";
     const photoAlt = boxName.trim() || boxNumberLabel;
     const numberValue = typeof box.numberInput === "string" ? box.numberInput : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
     const numberError = (typeof box.numberError === "string" && box.numberError)
-      || (Boolean(box.manualNumberEntry) && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
-    const showManualNumberEntry = Boolean(box.manualNumberEntry);
+      || (Boolean(box.manualNumberEntry) && !box.parentBoxId && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
+    const showManualNumberEntry = Boolean(box.manualNumberEntry) && !box.parentBoxId;
     const showAvailableNumberChoices = state.meta.autoBoxNumbers === false
       && showManualNumberEntry
       && !String(numberValue).trim()
@@ -649,7 +915,7 @@
               </div>
             </label>
             ${numberError ? `<p class="box-inline-error">${escapeHtml(numberError)}</p>` : ""}`
-          : `<span class="box-number-label">Box ${escapeHtml(box.number)}</span>`}
+          : `<span class="box-number-label">${escapeHtml(boxNumberLabel)}</span>`}
         <div class="box-property-row">
           <label class="box-property-toggle">
             <span class="box-property-toggle-shell">
@@ -680,7 +946,7 @@
         </div>
       </div>
     </article>
-    ${renderInsertLine(context)}`;
+    ${options.hideInsertLine ? "" : renderInsertLine(context)}`;
   }
 
   function renderCategory(category, options = {}) {
@@ -721,7 +987,7 @@
     state.layout.forEach((ref) => {
       if (ref.type === "box") {
         const box = findBox(ref.id);
-        if (box) {
+        if (box && !box.parentBoxId) {
           fragments.push(renderBox(box, { scope: "root-end" }, { flat: true }));
         }
         return;
@@ -748,10 +1014,12 @@
       orderDirectionIcon.className = `bi ${state.meta.boxOrderDirection === "bottom" ? "bi-arrow-down" : "bi-arrow-up"}`;
     }
     const duplicateCategoryIds = getDuplicateCategoryIds();
+    const currentViewBox = getCurrentViewBox();
 
     const boxCount = state.boxes.length;
     const categoryCount = state.categories.length;
     summary.textContent = `${boxCount} ${boxCount === 1 ? "box" : "boxes"} across ${categoryCount} ${categoryCount === 1 ? "category" : "categories"}.`;
+    setSearchStatus(searchStatusMessage);
 
     if (categoryDuplicateWarning) {
       if (duplicateCategoryIds.size > 0) {
@@ -766,7 +1034,9 @@
       }
     }
 
-    const content = state.categoriesVisible
+    const content = currentViewBox
+      ? renderBoxView(currentViewBox)
+      : state.categoriesVisible
       ? state.layout.map((ref, index) => {
           if (ref.type === "category") {
             const category = findCategory(ref.id);
@@ -774,7 +1044,7 @@
           }
 
           const box = findBox(ref.id);
-          if (!box) {
+          if (!box || box.parentBoxId) {
             return "";
           }
 
@@ -792,7 +1062,10 @@
     organizerList.innerHTML = hasContent
       ? `${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}${renderInsertLine({ scope: "root-end" }, { forceActive: true, extraClass: "root-trailing" })}`
       : `${emptyMessage}${renderEmptyRootInsertLines()}`;
-    bulkActions.hidden = selectedBoxIds.size === 0;
+    if (currentViewBox) {
+      organizerList.innerHTML = content;
+    }
+    bulkActions.hidden = currentViewBox ? true : selectedBoxIds.size === 0;
     renderCategoryDeleteOverlay();
   }
 
@@ -924,6 +1197,73 @@
     box.numberError = "";
     validateAndCommitBoxNumber(box.id, { focusOnError: false });
     focusBoxNumber(box.id);
+  }
+
+  function openBoxView(boxId) {
+    const box = findBox(boxId);
+    if (!box) {
+      return;
+    }
+
+    state.meta.activeBoxViewId = box.id;
+    selectedBoxIds.clear();
+    scheduleSave();
+    renderOrganizer();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeBoxView() {
+    state.meta.activeBoxViewId = null;
+    scheduleSave();
+    renderOrganizer();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openContentCamera(boxId) {
+    activeContentBoxId = boxId;
+    contentCameraInput.value = "";
+    contentCameraInput.click();
+  }
+
+  function openContentGallery(boxId) {
+    activeContentBoxId = boxId;
+    contentGalleryInput.value = "";
+    contentGalleryInput.click();
+  }
+
+  function applyContentImageToBox(boxId, file) {
+    const box = findBox(boxId);
+    if (!box || !file) {
+      return;
+    }
+
+    box.contentImages = [...box.contentImages, {
+      id: uid("content-image"),
+      blob: file,
+      type: file.type,
+      name: file.name,
+      updatedAt: Date.now()
+    }];
+    scheduleSave();
+    renderOrganizer();
+  }
+
+  function performItemSearch() {
+    const rawQuery = itemSearchInput?.value.trim() || "";
+    const query = rawQuery.toLowerCase();
+    if (!query) {
+      setSearchStatus("Enter an item name to search.");
+      return;
+    }
+
+    const matchedBox = state.boxes.find((box) => box.itemsText.split(/\r?\n/).some((line) => line.trim().toLowerCase().includes(query)));
+    if (!matchedBox) {
+      setSearchStatus(`No item found for \"${rawQuery}\".`);
+      return;
+    }
+
+    setSearchStatus("");
+    openBoxView(matchedBox.id);
   }
 
   function assignNumbersToUnnumberedBoxes() {
@@ -1137,6 +1477,21 @@
   function insertNewBox(insertionContext, box) {
     state.boxes.push(box);
 
+    if (box.parentBoxId) {
+      const siblingBoxes = getChildBoxes(box.parentBoxId).filter((childBox) => childBox.id !== box.id);
+      const lastSibling = siblingBoxes[siblingBoxes.length - 1];
+      box.order = Number.isFinite(lastSibling?.order) ? lastSibling.order + 1000 : 1000;
+      selectedBoxIds.clear();
+      activeLineKey = "";
+      scheduleSave();
+      renderOrganizer();
+      window.setTimeout(() => {
+        renderOrganizer();
+        focusBox(box.id);
+      }, 0);
+      return;
+    }
+
     if (state.categoriesVisible && (insertionContext.scope === "category" || insertionContext.scope === "category-start") && insertionContext.categoryId) {
       box.categoryId = insertionContext.categoryId;
       insertBoxesInCategory([box.id], insertionContext.categoryId, insertionContext.scope === "category" ? insertionContext.afterId : null);
@@ -1179,9 +1534,12 @@
         name: options.file.name,
         updatedAt: Date.now()
       } : null,
+      contentImages: [],
       viewScale: 1,
       fragile: Boolean(options.fragile),
-      heavy: Boolean(options.heavy)
+      heavy: Boolean(options.heavy),
+      parentBoxId: options.parentBoxId || null,
+      itemsText: ""
     };
 
     insertNewBox(insertionContext, box);
@@ -1218,6 +1576,16 @@
   }
 
   function addBox(context) {
+    const currentViewBox = getCurrentViewBox();
+    if (currentViewBox) {
+      createBoxRecord(context, null, {
+        name: "",
+        manualNumberEntry: false,
+        parentBoxId: currentViewBox.id
+      });
+      return;
+    }
+
     const insertionContext = resolveBoxInsertionContext(context);
     if (state.meta.autoBoxNumbers === false) {
       createBoxRecord(insertionContext, null, {
@@ -1269,16 +1637,36 @@
     });
   }
 
+  function getDescendantBoxIds(boxId) {
+    const descendants = [];
+    const queue = [boxId];
+
+    while (queue.length) {
+      const currentBoxId = queue.shift();
+      descendants.push(currentBoxId);
+      getChildBoxes(currentBoxId).forEach((childBox) => queue.push(childBox.id));
+    }
+
+    return descendants;
+  }
+
   function removeBoxes(boxIds) {
-    recycleBoxNumbers(boxIds);
-    boxIds.forEach(revokeBoxImage);
-    state.boxes = state.boxes.filter((box) => !boxIds.includes(box.id));
-    if (state.meta.universalBoxScaleSourceId && boxIds.includes(state.meta.universalBoxScaleSourceId)) {
+    const allBoxIds = [...new Set(boxIds.flatMap((boxId) => getDescendantBoxIds(boxId)))];
+    recycleBoxNumbers(allBoxIds);
+    allBoxIds.forEach((boxId) => {
+      revokeBoxImage(boxId);
+      revokeContentImages(boxId);
+    });
+    state.boxes = state.boxes.filter((box) => !allBoxIds.includes(box.id));
+    if (state.meta.universalBoxScaleSourceId && allBoxIds.includes(state.meta.universalBoxScaleSourceId)) {
       state.meta.universalBoxScaleSourceId = null;
     }
-    state.layout = state.layout.filter((ref) => !(ref.type === "box" && boxIds.includes(ref.id)));
-    selectedBoxIds = new Set([...selectedBoxIds].filter((id) => !boxIds.includes(id)));
-    overlaySelectedIds = new Set([...overlaySelectedIds].filter((id) => !boxIds.includes(id)));
+    if (state.meta.activeBoxViewId && allBoxIds.includes(state.meta.activeBoxViewId)) {
+      state.meta.activeBoxViewId = null;
+    }
+    state.layout = state.layout.filter((ref) => !(ref.type === "box" && allBoxIds.includes(ref.id)));
+    selectedBoxIds = new Set([...selectedBoxIds].filter((id) => !allBoxIds.includes(id)));
+    overlaySelectedIds = new Set([...overlaySelectedIds].filter((id) => !allBoxIds.includes(id)));
     normalizeState();
   }
 
@@ -2033,7 +2421,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "categorize-root-segment", "expand-photo", "camera", "gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "choose-available-box-number", "toggle-category", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "new-box-inside", "open-box", "box-view-back", "box-view-root", "categorize-root-segment", "expand-photo", "camera", "gallery", "content-camera", "content-gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "choose-available-box-number", "toggle-category", "toggle-content-image-tags", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -2051,6 +2439,31 @@
 
     if (action === "new-box") {
       addBox(context);
+      return;
+    }
+
+    if (action === "new-box-inside") {
+      addBox({ scope: "box-child", parentBoxId: actionElement.dataset.boxId });
+      return;
+    }
+
+    if (action === "open-box") {
+      openBoxView(actionElement.dataset.boxId);
+      return;
+    }
+
+    if (action === "box-view-back") {
+      const currentViewBox = getCurrentViewBox();
+      if (!currentViewBox?.parentBoxId) {
+        closeBoxView();
+      } else {
+        openBoxView(currentViewBox.parentBoxId);
+      }
+      return;
+    }
+
+    if (action === "box-view-root") {
+      closeBoxView();
       return;
     }
 
@@ -2074,11 +2487,31 @@
       return;
     }
 
+    if (action === "content-camera") {
+      openContentCamera(actionElement.dataset.boxId);
+      return;
+    }
+
+    if (action === "content-gallery") {
+      openContentGallery(actionElement.dataset.boxId);
+      return;
+    }
+
     if (action === "clear-photo") {
       const box = findBox(actionElement.dataset.boxId);
       if (box) {
         revokeBoxImage(box.id);
         box.image = null;
+        scheduleSave();
+        renderOrganizer();
+      }
+      return;
+    }
+
+    if (action === "toggle-content-image-tags") {
+      const match = findContentImage(actionElement.dataset.boxId, actionElement.dataset.imageId);
+      if (match) {
+        match.image.tagsCollapsed = !match.image.tagsCollapsed;
         scheduleSave();
         renderOrganizer();
       }
@@ -2250,14 +2683,8 @@
       }
 
       const boxCard = event.target.closest(".box-card");
-      if (boxCard && !event.target.closest("[data-skip-select], button, input, label, select")) {
-        const boxId = boxCard.dataset.boxId;
-        if (selectedBoxIds.has(boxId)) {
-          selectedBoxIds.delete(boxId);
-        } else {
-          selectedBoxIds.add(boxId);
-        }
-        renderOrganizer();
+      if (boxCard && !event.target.closest("[data-skip-select], button, input, label, select, textarea")) {
+        openBoxView(boxCard.dataset.boxId);
         return;
       }
 
@@ -2281,6 +2708,29 @@
           box.name = target.value;
           scheduleSave();
           summary.textContent = "Saving box...";
+        }
+      }
+
+      if (target.dataset.action === "box-items") {
+        const box = findBox(target.dataset.boxId);
+        if (box) {
+          box.itemsText = target.value;
+          scheduleSave();
+        }
+      }
+
+      if (target.dataset.action === "content-image-tag-input") {
+        const tagsCommitted = applyContentImageTagInput(target.dataset.boxId, target.dataset.imageId, target.value);
+        if (tagsCommitted) {
+          const boxId = target.dataset.boxId;
+          const imageId = target.dataset.imageId;
+          renderOrganizer();
+          requestAnimationFrame(() => {
+            const nextInput = root.querySelector(`[data-action="content-image-tag-input"][data-box-id="${CSS.escape(boxId)}"][data-image-id="${CSS.escape(imageId)}"]`);
+            nextInput?.focus();
+            const length = nextInput?.value.length || 0;
+            nextInput?.setSelectionRange(length, length);
+          });
         }
       }
 
@@ -2412,7 +2862,7 @@
       }
 
       const boxCard = event.target.closest(".box-card");
-      if (boxCard) {
+      if (boxCard && !getCurrentViewBox()) {
         startPress(event, "box", boxCard.dataset.boxId);
         return;
       }
@@ -2467,6 +2917,15 @@
       renderOrganizer();
     });
 
+    itemSearchButton?.addEventListener("click", performItemSearch);
+
+    itemSearchInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        performItemSearch();
+      }
+    });
+
     confirmModal.addEventListener("click", (event) => {
       const button = event.target.closest("[data-confirm]");
       if (button) {
@@ -2485,6 +2944,20 @@
       const file = galleryInput.files?.[0];
       if (file && activePhotoBoxId) {
         applyImageToBox(activePhotoBoxId, file);
+      }
+    });
+
+    contentCameraInput.addEventListener("change", () => {
+      const file = contentCameraInput.files?.[0];
+      if (file && activeContentBoxId) {
+        applyContentImageToBox(activeContentBoxId, file);
+      }
+    });
+
+    contentGalleryInput.addEventListener("change", () => {
+      const file = contentGalleryInput.files?.[0];
+      if (file && activeContentBoxId) {
+        applyContentImageToBox(activeContentBoxId, file);
       }
     });
 

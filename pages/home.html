@@ -4,6 +4,15 @@
       <h1>MoveOptimize</h1>
       <p data-summary>Ready to organize your move.</p>
       <p id="categoryDuplicateWarning" class="category-duplicate-warning" hidden></p>
+      <div class="toolbar-search" role="search">
+        <input id="itemSearchInput" type="search" placeholder="Search item names">
+        <button id="itemSearchButton" type="button">Search</button>
+        <button id="orderDirectionButton" class="toolbar-action-button" type="button" aria-label="Order Direction">
+          <span>Order Direction</span>
+          <i id="orderDirectionIcon" class="bi bi-arrow-up" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p id="searchStatus" class="search-status" hidden></p>
     </div>
     <div class="toolbar-toggles">
       <label class="category-toggle" for="categoryToggle">
@@ -16,10 +25,6 @@
         <input id="autoBoxNumberToggle" type="checkbox" checked>
         <span class="toggle-track" aria-hidden="true"><span></span></span>
       </label>
-      <button id="orderDirectionButton" class="toolbar-action-button" type="button" aria-label="Order Direction">
-        <span>Order Direction</span>
-        <i id="orderDirectionIcon" class="bi bi-arrow-up" aria-hidden="true"></i>
-      </button>
     </div>
   </header>
 
@@ -34,6 +39,8 @@
 
   <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
   <input id="galleryInput" type="file" accept="image/*" hidden>
+  <input id="contentCameraInput" type="file" accept="image/*" capture="environment" hidden>
+  <input id="contentGalleryInput" type="file" accept="image/*" hidden>
 
   <div id="confirmModal" class="modal-backdrop" hidden>
     <section class="modal-panel confirm-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
