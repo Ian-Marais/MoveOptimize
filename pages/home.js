@@ -122,7 +122,7 @@
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
-  const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => !box.parentBoxId && box.id !== excludingBoxId && box.number === boxNumber);
+  const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => box.id !== excludingBoxId && box.number === boxNumber);
   const normalizeBoxScale = (value) => {
     const parsed = Number.parseFloat(value);
     return BOX_SCALE_OPTIONS.includes(parsed) ? parsed : 1;
@@ -214,24 +214,24 @@
       }
 
       const parsedBoxNumber = Number.parseInt(box.numberInput, 10);
-      let boxNumber = !box.parentBoxId && Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
-      if (!box.parentBoxId && (!boxNumber || usedBoxNumbers.has(boxNumber)) && Number.isInteger(parsedBoxNumber) && parsedBoxNumber > 0 && !usedBoxNumbers.has(parsedBoxNumber)) {
+      let boxNumber = Number.isInteger(box.number) && box.number > 0 ? box.number : extractBoxNumber(box.name);
+      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && Number.isInteger(parsedBoxNumber) && parsedBoxNumber > 0 && !usedBoxNumbers.has(parsedBoxNumber)) {
         boxNumber = parsedBoxNumber;
       }
 
-      if (!box.parentBoxId && (!boxNumber || usedBoxNumbers.has(boxNumber)) && !box.manualNumberEntry) {
+      if ((!boxNumber || usedBoxNumbers.has(boxNumber)) && !box.manualNumberEntry) {
         while (usedBoxNumbers.has(inferredNextBoxNumber)) {
           inferredNextBoxNumber += 1;
         }
         boxNumber = inferredNextBoxNumber;
       }
 
-      box.number = !box.parentBoxId && Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null;
+      box.number = Number.isInteger(boxNumber) && boxNumber > 0 ? boxNumber : null;
       box.numberInput = typeof box.numberInput === "string"
         ? box.numberInput
         : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
       box.numberError = typeof box.numberError === "string" ? box.numberError : "";
-      box.manualNumberEntry = Boolean(box.manualNumberEntry);
+      box.manualNumberEntry = Boolean(box.manualNumberEntry || box.parentBoxId);
       box.fragile = Boolean(box.fragile);
       box.heavy = Boolean(box.heavy);
       box.itemsText = typeof box.itemsText === "string" ? box.itemsText : "";
@@ -245,7 +245,7 @@
         tagDraft: typeof image.tagDraft === "string" ? image.tagDraft : "",
         tagsCollapsed: Boolean(image.tagsCollapsed)
       })).filter((image) => image.blob) : [];
-      if (!box.parentBoxId && Number.isInteger(box.number) && box.number > 0) {
+      if (Number.isInteger(box.number) && box.number > 0) {
         usedBoxNumbers.add(box.number);
         inferredNextBoxNumber = Math.max(inferredNextBoxNumber, box.number + 1);
       }
@@ -1056,8 +1056,8 @@
     const photoAlt = boxName.trim() || boxNumberLabel;
     const numberValue = typeof box.numberInput === "string" ? box.numberInput : (Number.isInteger(box.number) && box.number > 0 ? String(box.number) : "");
     const numberError = (typeof box.numberError === "string" && box.numberError)
-      || (Boolean(box.manualNumberEntry) && !box.parentBoxId && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
-    const showManualNumberEntry = Boolean(box.manualNumberEntry) && !box.parentBoxId;
+      || (Boolean(box.manualNumberEntry) && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
+    const showManualNumberEntry = Boolean(box.manualNumberEntry);
     const showAvailableNumberChoices = state.meta.autoBoxNumbers === false
       && showManualNumberEntry
       && !String(numberValue).trim()
@@ -1674,7 +1674,11 @@
       renderOrganizer();
       window.setTimeout(() => {
         renderOrganizer();
-        focusBox(box.id);
+        if (box.manualNumberEntry && (!Number.isInteger(box.number) || box.number <= 0)) {
+          focusBoxNumber(box.id);
+        } else {
+          focusBox(box.id);
+        }
       }, 0);
       return;
     }
@@ -1765,9 +1769,10 @@
   function addBox(context) {
     const currentViewBox = getCurrentViewBox();
     if (currentViewBox) {
-      createBoxRecord(context, null, {
+      const childBoxNumber = state.meta.autoBoxNumbers === false ? null : claimNextBoxNumber();
+      createBoxRecord(context, childBoxNumber, {
         name: "",
-        manualNumberEntry: false,
+        manualNumberEntry: true,
         parentBoxId: currentViewBox.id
       });
       return;
