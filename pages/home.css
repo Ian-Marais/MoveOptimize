@@ -98,7 +98,8 @@ button {
 }
 
 .toolbar-search input {
-  flex: 1 1 220px;
+  flex: 0 1 110px;
+  max-width: 110px;
   min-height: 42px;
   padding: 0 12px;
   border: 1px solid var(--line);
@@ -132,6 +133,32 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 6px 12px;
+}
+
+.toolbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.profile-button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-dark);
+  box-shadow: 0 6px 18px rgba(20, 35, 55, 0.08);
+}
+
+.profile-button i {
+  font-size: 1.3rem;
 }
 
 .category-toggle {
@@ -769,7 +796,7 @@ button {
 }
 
 .insert-actions button {
-  min-height: 34px;
+  min-height: 17px;
   border-color: var(--blue);
   border-radius: 2px;
   background: var(--blue-soft);
@@ -1504,6 +1531,15 @@ button {
 @media (max-width: 520px) {
   .app-toolbar {
     align-items: flex-start;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .profile-button {
+    align-self: flex-end;
   }
 
   .toolbar-toggles {

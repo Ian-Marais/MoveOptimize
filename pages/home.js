@@ -383,10 +383,14 @@
   }
 
   function renderInsertLine(context, options = {}) {
-    const { compact = false, forceActive = false, extraClass = "" } = options;
+    const { compact = false, forceActive = false, extraClass = "", boxOnly = false } = options;
     const key = contextKey(context);
     const active = forceActive || activeLineKey === key;
-    const controls = state.categoriesVisible
+    const controls = boxOnly
+      ? `<div class="insert-actions single">
+          <button type="button" data-action="new-box" ${contextAttributes(context)}>New Box</button>
+        </div>`
+      : state.categoriesVisible
       ? `<div class="insert-actions">
           <button type="button" data-action="new-category" ${contextAttributes(context)}>New Category</button>
           <button type="button" data-action="new-box" ${contextAttributes(context)}>New Box</button>
@@ -918,6 +922,7 @@
     const breadcrumbs = getBoxBreadcrumbs(box.id);
     const childBoxes = getOrderedChildBoxes(box.id);
     const breadcrumbHtml = breadcrumbs.map((crumb, index) => index === breadcrumbs.length - 1 ? `<span>${escapeHtml(getBoxLabel(crumb))}</span>` : `<button type="button" data-action="open-box" data-box-id="${escapeHtml(crumb.id)}">${escapeHtml(getBoxLabel(crumb))}</button>`).join("<span>/</span>");
+    const childInsertContext = { scope: "box-child", parentBoxId: box.id };
 
     return `<section class="box-view-shell">
       <div class="box-view-header">
@@ -938,11 +943,7 @@
         ${renderContentImages(box)}
       </section>
       <section class="nested-boxes-section">
-        <div class="nested-boxes-header">
-          <h3>Boxes Inside</h3>
-          <button type="button" class="toolbar-action-button" data-action="new-box-inside" data-box-id="${escapeHtml(box.id)}">New Box Inside</button>
-        </div>
-        <div class="nested-box-list">${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id }, { hideInsertLine: true })).join("") : `<p class="box-content-empty">No boxes inside yet.</p>`}</div>
+        <div class="nested-box-list">${renderInsertLine(childInsertContext, { extraClass: "nested-box-insert", boxOnly: true })}${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id })).join("") : ""}</div>
       </section>
       <section class="box-items-dock">
         <label class="box-items-label" for="boxItemsTextarea">Items in ${escapeHtml(getBoxLabel(box))}</label>
@@ -1127,7 +1128,7 @@
         </div>
       </div>
     </article>
-    ${options.hideInsertLine ? "" : renderInsertLine(context)}`;
+    ${options.hideInsertLine ? "" : renderInsertLine(context, { boxOnly: context?.scope === "box-child" })}`;
   }
 
   function renderCategory(category, options = {}) {
