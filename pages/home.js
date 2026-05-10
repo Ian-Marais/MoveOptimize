@@ -1090,9 +1090,9 @@
         <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" placeholder="Name this box">
         ${showManualNumberEntry
           ? `<label class="box-number-edit-wrap">
-              <span>Box number</span>
+              <span>Box no.</span>
               <div class="box-number-input-shell">
-                <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box number" min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
+                <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box no." min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
                 ${showAvailableNumberChoices ? `<div class="box-number-popup" role="listbox" aria-label="Available box numbers"><p class="box-number-popup-title">Deleted box numbers</p>${availableNumberChoices}</div>` : ""}
               </div>
             </label>

@@ -833,10 +833,10 @@ button {
 
 .box-image-shell {
   position: relative;
-  width: calc(165px + ((var(--box-scale) - 1) * 90px));
-  max-width: min(100%, calc(165px + ((var(--box-scale) - 1) * 90px)));
+  width: calc(123.75px + ((var(--box-scale) - 1) * 67.5px));
+  max-width: min(100%, calc(123.75px + ((var(--box-scale) - 1) * 67.5px)));
   min-width: 0;
-  min-height: calc(99px + ((var(--box-scale) - 1) * 81px));
+  min-height: calc(74.25px + ((var(--box-scale) - 1) * 60.75px));
   overflow: hidden;
   border-radius: 6px;
   background: #e9f0f7;
@@ -894,10 +894,10 @@ button {
 
 .image-action {
   position: absolute;
-  width: 29px;
-  min-width: 29px;
-  min-height: 29px;
-  height: 29px;
+  width: 21.75px;
+  min-width: 21.75px;
+  min-height: 21.75px;
+  height: 21.75px;
   border: 1px solid rgba(255, 255, 255, 0.74);
   border-radius: 3px;
   background: rgba(15, 32, 48, 0.78);
@@ -905,35 +905,35 @@ button {
 }
 
 .image-action i {
-  font-size: 0.75rem;
+  font-size: 0.5625rem;
 }
 
 .image-action.camera {
-  left: 6px;
-  bottom: 6px;
+  left: 4.5px;
+  bottom: 4.5px;
 }
 
 .image-action.enlarge {
-  left: 6px;
-  top: 6px;
-  width: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  height: 26px;
+  left: 4.5px;
+  top: 4.5px;
+  width: 19.5px;
+  min-width: 19.5px;
+  min-height: 19.5px;
+  height: 19.5px;
 }
 
 .image-action.gallery {
-  right: 6px;
-  bottom: 6px;
+  right: 4.5px;
+  bottom: 4.5px;
 }
 
 .image-action.clear {
-  right: 6px;
-  top: 6px;
-  width: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  height: 26px;
+  right: 4.5px;
+  top: 4.5px;
+  width: 19.5px;
+  min-width: 19.5px;
+  min-height: 19.5px;
+  height: 19.5px;
 }
 
 .box-details {
@@ -946,12 +946,16 @@ button {
 }
 
 .box-details input {
-  min-height: calc(34px + ((var(--box-scale) - 1) * 6px));
-  padding: 0 calc(8px + ((var(--box-scale) - 1) * 3px));
+  min-height: calc(25.5px + ((var(--box-scale) - 1) * 4.5px));
+  padding: 0 calc(6px + ((var(--box-scale) - 1) * 2.25px));
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: calc(1rem + ((var(--box-scale) - 1) * 0.1rem));
+  font-size: calc(0.75rem + ((var(--box-scale) - 1) * 0.075rem));
   align-self: start;
+}
+
+.box-details input[data-action="box-name"] {
+  width: min(100%, 150px);
 }
 
 .box-details span {
@@ -964,15 +968,15 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 14px;
+  gap: 7.5px 10.5px;
   margin-top: -1px;
 }
 
 .box-property-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 22px;
+  gap: 5.25px;
+  min-height: 16.5px;
 }
 
 .box-property-toggle-shell {
@@ -980,8 +984,8 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 16.5px;
+  height: 16.5px;
   flex: 0 0 auto;
 }
 
@@ -997,10 +1001,10 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 16.5px;
+  height: 16.5px;
   border: 1px solid #c6d0dc;
-  border-radius: 6px;
+  border-radius: 4.5px;
   background: #fff;
   color: transparent;
   box-shadow: 0 1px 3px rgba(20, 35, 55, 0.12);
@@ -1008,7 +1012,7 @@ button {
 }
 
 .box-property-toggle-box i {
-  font-size: 0.9rem;
+  font-size: 0.675rem;
 }
 
 .box-property-toggle-shell input:checked + .box-property-toggle-box {
@@ -1039,25 +1043,27 @@ button {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 21px;
+  padding: 0 7.5px;
   border-radius: 999px;
   background: var(--blue-soft);
   color: var(--blue-dark);
 }
 
 .box-number-edit-wrap {
-  display: grid;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: flex-start;
 }
 
 .box-number-edit-wrap span {
   color: var(--ink);
+  white-space: nowrap;
 }
 
 .box-number-edit-wrap input {
-  width: 132px;
+  width: 49.5px;
 }
 
 .box-number-input-shell {
@@ -1119,7 +1125,7 @@ button {
 .box-scale-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4.5px;
   align-items: center;
   align-self: flex-start;
   margin-top: 0;
@@ -1129,14 +1135,14 @@ button {
 .box-scale-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  padding: 0 8px;
+  gap: 3.75px;
+  min-height: 24px;
+  padding: 0 6px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
   color: var(--ink);
-  font-size: 0.8rem;
+  font-size: 0.6rem;
   font-weight: 700;
 }
 
@@ -1145,7 +1151,7 @@ button {
 }
 
 .box-scale-select-wrap select {
-  min-width: 58px;
+  min-width: 43.5px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -1159,8 +1165,8 @@ button {
 }
 
 .box-scale-toggle input {
-  width: 15px;
-  height: 15px;
+  width: 11.25px;
+  height: 11.25px;
   margin: 0;
 }
 
@@ -1595,8 +1601,8 @@ button {
   }
 
   .box-image-shell {
-    width: calc(165px + ((var(--box-scale) - 1) * 90px));
-    max-width: min(100%, calc(165px + ((var(--box-scale) - 1) * 90px)));
+    width: calc(123.75px + ((var(--box-scale) - 1) * 67.5px));
+    max-width: min(100%, calc(123.75px + ((var(--box-scale) - 1) * 67.5px)));
   }
 
   .box-details input {
@@ -1615,7 +1621,7 @@ button {
   }
 
   .box-image-shell {
-    width: calc(195px + ((var(--box-scale) - 1) * 105px));
-    max-width: min(100%, calc(195px + ((var(--box-scale) - 1) * 105px)));
+    width: calc(146.25px + ((var(--box-scale) - 1) * 78.75px));
+    max-width: min(100%, calc(146.25px + ((var(--box-scale) - 1) * 78.75px)));
   }
 }
