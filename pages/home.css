@@ -855,6 +855,7 @@ button {
   left: 50%;
   bottom: 8px;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   gap: 2px;
   transform: translateX(-50%);
@@ -1013,12 +1014,18 @@ button {
 
 .box-property-toggle-box i {
   font-size: 0.675rem;
+  opacity: 0;
+  transition: opacity 140ms ease;
 }
 
 .box-property-toggle-shell input:checked + .box-property-toggle-box {
   border-color: var(--danger);
   background: rgba(180, 35, 24, 0.1);
   color: var(--danger);
+}
+
+.box-property-toggle-shell input:checked + .box-property-toggle-box i {
+  opacity: 1;
 }
 
 .box-property-toggle-shell input:focus-visible + .box-property-toggle-box {
