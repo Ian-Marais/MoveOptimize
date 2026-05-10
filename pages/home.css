@@ -841,7 +841,6 @@ button {
   border-radius: 6px;
   background: #e9f0f7;
   aspect-ratio: 4 / 3;
-  cursor: pointer;
 }
 
 .box-image-shell img {
@@ -849,23 +848,6 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.box-image-open-hit {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  padding: 0;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.box-image-open-hit:focus-visible {
-  outline: 2px solid rgba(15, 111, 189, 0.35);
-  outline-offset: -2px;
 }
 
 .box-image-badges {
@@ -1552,7 +1534,7 @@ button {
   box-shadow: 0 8px 18px rgba(20, 35, 55, 0.18);
 }
 
-@media (max-width: 520px) {
+@media (max-width: 400px) {
   .app-toolbar {
     align-items: flex-start;
   }

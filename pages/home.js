@@ -1080,7 +1080,6 @@
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
         <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(photoAlt)} photo" loading="lazy">
-        <button type="button" class="box-image-open-hit" data-action="open-box" data-box-id="${escapeHtml(box.id)}" aria-label="Open ${escapeHtml(photoAlt)}"></button>
         ${imageBadges ? `<div class="box-image-badges">${imageBadges}</div>` : ""}
         <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
         <button type="button" class="icon-button image-action camera" data-action="camera" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Take box photo"><i class="bi bi-camera-fill"></i></button>
