@@ -432,7 +432,7 @@ button {
 }
 
 .box-content-tag-editor {
-  --tag-toggle-width: 34px;
+  --tag-toggle-width: 17px;
   --tag-body-width: 186px;
   display: flex;
   align-items: stretch;
@@ -527,7 +527,11 @@ button {
 
 .box-content-tag-toggle {
   flex: 0 0 var(--tag-toggle-width);
+  display: grid;
+  place-items: center;
   width: var(--tag-toggle-width);
+  min-width: var(--tag-toggle-width);
+  padding: 0;
   border: 0;
   border-right: 1px solid var(--line);
   background: #f5f8fc;
@@ -535,7 +539,7 @@ button {
 }
 
 .box-content-tag-toggle i {
-  font-size: 0.92rem;
+  font-size: 0.72rem;
 }
 
 .box-content-empty {
