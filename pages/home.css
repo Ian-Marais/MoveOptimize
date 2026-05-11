@@ -389,7 +389,7 @@ button {
 .box-content-gallery {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-start;
 }
 
