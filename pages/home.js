@@ -323,7 +323,8 @@
         updatedAt: image.updatedAt || Date.now(),
         tags: Array.isArray(image.tags) ? image.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [],
         tagDraft: typeof image.tagDraft === "string" ? image.tagDraft : "",
-        tagsCollapsed: Boolean(image.tagsCollapsed)
+        tagsCollapsed: Boolean(image.tagsCollapsed),
+        viewScale: normalizeBoxScale(image.viewScale)
       })).filter((image) => image.blob) : [];
       if (Number.isInteger(box.number) && box.number > 0) {
         usedBoxNumbers.add(box.number);
@@ -983,8 +984,19 @@
       const imageKey = getContentImageKey(box.id, image.id);
       const selected = selectedContentImageKeys.has(imageKey);
       const tagsHtml = image.tags.map((tag) => `<span class="box-content-tag">${escapeHtml(tag)}</span>`).join("");
+      const imageScale = normalizeBoxScale(image.viewScale);
       return `<div class="box-content-card ${selected ? "selected" : ""} ${image.tagsCollapsed ? "collapsed" : ""}" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}">
-        <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
+        <div class="box-content-photo-column" style="--content-image-scale:${escapeHtml(imageScale.toFixed(2))}">
+          <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
+          <div class="box-content-scale-controls">
+            <label class="box-scale-select-wrap box-content-scale-select-wrap">
+              <i class="bi bi-zoom-in"></i>
+              <select data-action="content-image-scale" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" data-skip-select="true" aria-label="Content image size multiplier">
+                ${renderBoxScaleOptions(imageScale)}
+              </select>
+            </label>
+          </div>
+        </div>
         <div class="box-content-tag-editor ${image.tagsCollapsed ? "collapsed" : ""}">
           <button type="button" class="box-content-tag-toggle" data-action="toggle-content-image-tags" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" aria-label="${image.tagsCollapsed ? "Expand" : "Collapse"} content photo tags">
             <i class="bi ${image.tagsCollapsed ? "bi-chevron-right" : "bi-chevron-left"}" aria-hidden="true"></i>
@@ -1514,7 +1526,8 @@
       blob: file,
       type: file.type,
       name: file.name,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      viewScale: 1
     }];
     scheduleSave();
     renderOrganizer();
@@ -3072,6 +3085,16 @@
         const box = findBox(target.dataset.boxId);
         if (box) {
           box.viewScale = normalizeBoxScale(target.value);
+          scheduleSave();
+          renderOrganizer();
+        }
+      }
+
+      if (target.dataset.action === "content-image-scale") {
+        const box = findBox(target.dataset.boxId);
+        const image = box?.contentImages.find((entry) => entry.id === target.dataset.imageId);
+        if (image) {
+          image.viewScale = normalizeBoxScale(target.value);
           scheduleSave();
           renderOrganizer();
         }
