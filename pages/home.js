@@ -986,13 +986,13 @@
       return `<div class="box-content-card ${selected ? "selected" : ""} ${image.tagsCollapsed ? "collapsed" : ""}" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}">
         <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
         <div class="box-content-tag-editor ${image.tagsCollapsed ? "collapsed" : ""}">
+          <button type="button" class="box-content-tag-toggle" data-action="toggle-content-image-tags" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" aria-label="${image.tagsCollapsed ? "Expand" : "Collapse"} content photo tags">
+            <i class="bi ${image.tagsCollapsed ? "bi-chevron-right" : "bi-chevron-left"}" aria-hidden="true"></i>
+          </button>
           <div class="box-content-tag-body ${tagsHtml ? "has-tags" : "no-tags"}">
             ${tagsHtml ? `<div class="box-content-tag-list">${image.tags.map((tag) => `<span class="box-content-tag" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" data-tag-value="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
             <textarea class="box-content-tag-input" data-action="content-image-tag-input" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" placeholder="Type tags separated by commas" aria-label="Content photo tags for ${escapeHtml(getBoxLabel(box))}">${escapeHtml(image.tagDraft || "")}</textarea>
           </div>
-          <button type="button" class="box-content-tag-toggle" data-action="toggle-content-image-tags" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" aria-label="${image.tagsCollapsed ? "Expand" : "Collapse"} content photo tags">
-            <i class="bi ${image.tagsCollapsed ? "bi-chevron-right" : "bi-chevron-left"}" aria-hidden="true"></i>
-          </button>
         </div>
       </div>`;
     }).join("")}</div>`;
