@@ -1021,7 +1021,7 @@
         </div>
       </div>
       <section class="nested-boxes-section">
-        <div class="nested-box-list">${renderInsertLine(childInsertContext, { extraClass: "nested-box-insert", boxOnly: true })}${renderContentImages(box)}${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id })).join("") : ""}</div>
+        <div class="nested-box-list">${renderInsertLine(childInsertContext, { extraClass: "nested-box-insert", boxOnly: true })}${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id })).join("") : ""}${renderContentImages(box)}</div>
       </section>
       <section class="box-items-dock ${itemsCollapsed ? "collapsed" : ""}">
         <div id="boxItemsPanel" class="box-items-panel" ${itemsCollapsed ? "hidden" : ""}>
