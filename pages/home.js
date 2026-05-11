@@ -991,7 +991,7 @@
       return `<p class="box-content-empty">No content photos added yet.</p>`;
     }
 
-    return `<div class="box-content-gallery">${box.contentImages.map((image) => {
+    return `<div class="box-content-gallery">${box.contentImages.map((image, index) => {
       const imageKey = getContentImageKey(box.id, image.id);
       const selected = selectedContentImageKeys.has(imageKey);
       const tagsHtml = image.tags.map((tag) => `<span class="box-content-tag">${escapeHtml(tag)}</span>`).join("");
@@ -1010,6 +1010,7 @@
                 ${renderBoxScaleOptions(imageScale)}
               </select>
             </label>
+            <span class="box-content-number-badge" aria-label="Image number">#${index + 1}</span>
           </div>
         </div>
         <div class="box-content-tag-editor ${image.tagsCollapsed ? "collapsed" : ""}">

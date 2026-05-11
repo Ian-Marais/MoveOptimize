@@ -462,29 +462,80 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
-  min-height: 28px;
-  padding: 4px 6px;
-  background: #f8fbff;
+  gap: 1px;
+  width: auto;
+  min-height: 10px;
+  margin-left: 8px;
+  margin-right: 8px;
+  padding: 0;
+  background: transparent;
 }
 
-.box-content-scale-toggle {
-  min-height: 20px;
-  padding: 0 4px;
+.box-content-scale-controls .box-content-scale-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 10px;
+  min-width: 10px;
+  flex: 0 0 10px;
+  gap: 0;
+  min-height: 10px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.box-content-scale-toggle span {
+.box-content-scale-controls .box-content-scale-toggle span {
   display: none;
 }
 
-.box-content-scale-select-wrap {
-  min-height: 20px;
-  padding: 0 5px;
-  font-size: 0.58rem;
+.box-content-scale-controls .box-content-scale-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.54rem;
 }
 
-.box-content-scale-select-wrap select {
-  min-width: 39px;
+.box-content-scale-controls .box-content-scale-toggle input {
+  width: 10px;
+  height: 10px;
+  margin: 0;
+}
+
+.box-content-scale-controls .box-content-scale-select-wrap select {
+  min-width: 0;
+  width: 2.4ch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1;
+  text-align: center;
+}
+
+.box-content-scale-controls .box-content-scale-select-wrap i {
+  display: none;
+}
+
+.box-content-number-badge {
+  margin-left: auto;
+  color: var(--blue-dark);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .box-content-tag-editor.collapsed {
