@@ -30,6 +30,7 @@
   const LONG_PRESS_MS = 500;
   const BOX_SCALE_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
 
+  const workspace = root.querySelector(".workspace");
   const organizerList = root.querySelector("#organizerList");
   const categoryToggle = root.querySelector("#categoryToggle");
   const autoBoxNumberToggle = root.querySelector("#autoBoxNumberToggle");
@@ -83,6 +84,7 @@
   let categoryDragCollapseState = null;
   let pendingBoxDraft = null;
   let searchStatusMessage = "";
+  let autosizeMeasure = null;
 
   const emptyState = () => ({
     categoriesVisible: true,
@@ -120,6 +122,59 @@
     return match ? Number.parseInt(match[1], 10) : null;
   };
 
+  function getAutosizeMeasure() {
+    if (autosizeMeasure) {
+      return autosizeMeasure;
+    }
+
+    autosizeMeasure = document.createElement("span");
+    autosizeMeasure.setAttribute("aria-hidden", "true");
+    autosizeMeasure.style.position = "absolute";
+    autosizeMeasure.style.visibility = "hidden";
+    autosizeMeasure.style.whiteSpace = "pre";
+    autosizeMeasure.style.pointerEvents = "none";
+    autosizeMeasure.style.left = "-9999px";
+    autosizeMeasure.style.top = "0";
+    document.body.appendChild(autosizeMeasure);
+    return autosizeMeasure;
+  }
+
+  function autosizeInput(input) {
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const measure = getAutosizeMeasure();
+    const computed = window.getComputedStyle(input);
+    measure.style.font = computed.font;
+    measure.style.fontKerning = computed.fontKerning;
+    measure.style.fontVariant = computed.fontVariant;
+    measure.style.fontWeight = computed.fontWeight;
+    measure.style.letterSpacing = computed.letterSpacing;
+    measure.style.textTransform = computed.textTransform;
+
+    const fallbackValue = input.placeholder || input.min || "";
+    const text = input.value || fallbackValue || " ";
+    measure.textContent = text;
+
+    const padding =
+      Number.parseFloat(computed.paddingLeft || "0") +
+      Number.parseFloat(computed.paddingRight || "0") +
+      Number.parseFloat(computed.borderLeftWidth || "0") +
+      Number.parseFloat(computed.borderRightWidth || "0") +
+      6;
+    const minWidth = Number.parseFloat(input.dataset.autosizeMin || "0");
+    const width = Math.ceil(measure.getBoundingClientRect().width + padding);
+
+    input.style.width = `${Math.max(minWidth, width)}px`;
+  }
+
+  function autosizeOrganizerInputs() {
+    organizerList
+      ?.querySelectorAll('[data-action="category-name"], [data-action="box-name"], [data-action="box-number"]')
+      .forEach((input) => autosizeInput(input));
+  }
+
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
   const findBox = (boxId) => state.boxes.find((box) => box.id === boxId);
   const boxNumberExists = (boxNumber, excludingBoxId = null) => state.boxes.some((box) => box.id !== excludingBoxId && box.number === boxNumber);
@@ -127,6 +182,28 @@
     const parsed = Number.parseFloat(value);
     return BOX_SCALE_OPTIONS.includes(parsed) ? parsed : 1;
   };
+
+  function getOrderedImageBadges(box) {
+    const badges = [];
+
+    if (box.fragile) {
+      badges.push({
+        key: "fragile",
+        activatedAt: Number.isFinite(box.fragileActivatedAt) ? box.fragileActivatedAt : 1,
+        html: `<div class="box-image-badge box-fragile-badge" aria-label="Fragile package"><i class="bi bi-exclamation-diamond-fill" aria-hidden="true"></i><span>Fragile</span></div>`
+      });
+    }
+
+    if (box.heavy) {
+      badges.push({
+        key: "heavy",
+        activatedAt: Number.isFinite(box.heavyActivatedAt) ? box.heavyActivatedAt : 2,
+        html: `<div class="box-image-badge box-heavy-badge" aria-label="Heavy package"><i class="bi bi-box-seam-fill" aria-hidden="true"></i><span>Heavy</span></div>`
+      });
+    }
+
+    return badges.sort((left, right) => left.activatedAt - right.activatedAt || left.key.localeCompare(right.key));
+  }
 
   function setSearchStatus(message = "") {
     searchStatusMessage = message;
@@ -234,7 +311,10 @@
       box.manualNumberEntry = Boolean(box.manualNumberEntry || box.parentBoxId);
       box.fragile = Boolean(box.fragile);
       box.heavy = Boolean(box.heavy);
+      box.fragileActivatedAt = Number.isFinite(box.fragileActivatedAt) ? box.fragileActivatedAt : (box.fragile ? Date.now() : 0);
+      box.heavyActivatedAt = Number.isFinite(box.heavyActivatedAt) ? box.heavyActivatedAt : (box.heavy ? box.fragileActivatedAt + 1 : 0);
       box.itemsText = typeof box.itemsText === "string" ? box.itemsText : "";
+      box.itemsCollapsed = Boolean(box.itemsCollapsed);
       box.contentImages = Array.isArray(box.contentImages) ? box.contentImages.filter(Boolean).map((image, imageIndex) => ({
         id: typeof image.id === "string" ? image.id : uid(`content-image-${imageIndex}`),
         blob: image.blob || null,
@@ -921,34 +1001,39 @@
   function renderBoxView(box) {
     const breadcrumbs = getBoxBreadcrumbs(box.id);
     const childBoxes = getOrderedChildBoxes(box.id);
+    const itemsCollapsed = Boolean(box.itemsCollapsed);
     const breadcrumbHtml = breadcrumbs.map((crumb, index) => index === breadcrumbs.length - 1 ? `<span>${escapeHtml(getBoxLabel(crumb))}</span>` : `<button type="button" data-action="open-box" data-box-id="${escapeHtml(crumb.id)}">${escapeHtml(getBoxLabel(crumb))}</button>`).join("<span>/</span>");
     const childInsertContext = { scope: "box-child", parentBoxId: box.id };
 
     return `<section class="box-view-shell">
+      <div class="box-view-content-rail" aria-label="Box content actions">
+        <button type="button" class="box-view-content-action" data-action="content-camera" data-box-id="${escapeHtml(box.id)}" aria-label="Take Photo">
+          <i class="bi bi-camera-fill" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="box-view-content-action" data-action="content-gallery" data-box-id="${escapeHtml(box.id)}" aria-label="Upload Photo">
+          <i class="bi bi-images" aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="box-view-header">
         <button type="button" class="toolbar-action-button box-view-back" data-action="box-view-back">${box.parentBoxId ? "Back" : "Root"}</button>
         <div class="box-view-heading">
           <div class="box-view-breadcrumbs"><button type="button" data-action="box-view-root">Home</button>${breadcrumbs.length ? `<span>/</span>${breadcrumbHtml}` : ""}</div>
-          <h2>${escapeHtml(getBoxLabel(box))}</h2>
         </div>
       </div>
-      <section class="box-content-panel">
-        <div class="box-content-panel-header">
-          <h3>Box Content Photos</h3>
-          <div class="box-content-actions">
-            <button type="button" class="toolbar-action-button" data-action="content-camera" data-box-id="${escapeHtml(box.id)}">Take Photo</button>
-            <button type="button" class="toolbar-action-button" data-action="content-gallery" data-box-id="${escapeHtml(box.id)}">Upload Photo</button>
-          </div>
-        </div>
-        ${renderContentImages(box)}
-      </section>
       <section class="nested-boxes-section">
-        <div class="nested-box-list">${renderInsertLine(childInsertContext, { extraClass: "nested-box-insert", boxOnly: true })}${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id })).join("") : ""}</div>
+        <div class="nested-box-list">${renderInsertLine(childInsertContext, { extraClass: "nested-box-insert", boxOnly: true })}${renderContentImages(box)}${childBoxes.length ? childBoxes.map((childBox) => renderBox(childBox, { scope: "box-child", parentBoxId: box.id, afterType: "box", afterId: childBox.id })).join("") : ""}</div>
       </section>
-      <section class="box-items-dock">
-        <label class="box-items-label" for="boxItemsTextarea">Items in ${escapeHtml(getBoxLabel(box))}</label>
-        <textarea id="boxItemsTextarea" data-action="box-items" data-box-id="${escapeHtml(box.id)}" placeholder="Type one item per line">${escapeHtml(box.itemsText || "")}</textarea>
-        <p class="box-items-help">Each line is searchable from the search bar at the top.</p>
+      <section class="box-items-dock ${itemsCollapsed ? "collapsed" : ""}">
+        <div id="boxItemsPanel" class="box-items-panel" ${itemsCollapsed ? "hidden" : ""}>
+          <textarea id="boxItemsTextarea" data-action="box-items" data-box-id="${escapeHtml(box.id)}" placeholder="Type one item per line">${escapeHtml(box.itemsText || "")}</textarea>
+        </div>
+        <button type="button" class="box-items-toggle" data-action="toggle-box-items" data-box-id="${escapeHtml(box.id)}" aria-expanded="${itemsCollapsed ? "false" : "true"}" aria-controls="boxItemsPanel">
+          <span class="box-items-toggle-copy">
+            <span class="box-items-toggle-label">Items in ${escapeHtml(getBoxLabel(box))}</span>
+            <span class="box-items-help">Each line is searchable from the search bar at the top.</span>
+          </span>
+          <i class="bi ${itemsCollapsed ? "bi-chevron-up" : "bi-chevron-down"}" aria-hidden="true"></i>
+        </button>
       </section>
     </section>`;
   }
@@ -1058,18 +1143,14 @@
     const numberError = (typeof box.numberError === "string" && box.numberError)
       || (Boolean(box.manualNumberEntry) && (!Number.isInteger(box.number) || box.number <= 0) ? "Enter a valid box number." : "");
     const showManualNumberEntry = Boolean(box.manualNumberEntry);
+    const autoNumberWidth = Math.max(5, String(boxNumberLabel || "Box").length + 1);
     const showAvailableNumberChoices = state.meta.autoBoxNumbers === false
       && showManualNumberEntry
       && !String(numberValue).trim()
       && state.meta.availableBoxNumbers.length > 0;
-    const imageBadges = [
-      box.fragile
-        ? `<div class="box-image-badge box-fragile-badge" aria-label="Fragile package"><i class="bi bi-exclamation-diamond-fill" aria-hidden="true"></i><span>Fragile</span></div>`
-        : "",
-      box.heavy
-        ? `<div class="box-image-badge box-heavy-badge" aria-label="Heavy package"><i class="bi bi-box-seam-fill" aria-hidden="true"></i><span>Heavy</span></div>`
-        : ""
-    ].filter(Boolean).join("");
+    const orderedBadges = getOrderedImageBadges(box);
+    const bottomBadge = orderedBadges[0]?.html || "";
+    const topBadge = orderedBadges.length > 1 ? orderedBadges[1].html : "";
     const availableNumberChoices = showAvailableNumberChoices
       ? state.meta.availableBoxNumbers
           .slice(0, 8)
@@ -1080,24 +1161,25 @@
     return `<article class="box-card ${selected ? "selected" : ""} ${isUniversalSource ? "universal-source" : ""}" style="--box-scale:${escapeHtml(effectiveScale.toFixed(2))}" data-box-id="${escapeHtml(box.id)}" data-category-id="${escapeHtml(box.categoryId || "")}">
       <div class="box-image-shell">
         <img src="${escapeHtml(getBoxImageSrc(box))}" alt="${escapeHtml(photoAlt)} photo" loading="lazy">
-        ${imageBadges ? `<div class="box-image-badges">${imageBadges}</div>` : ""}
+        ${bottomBadge ? `<div class="box-image-badges box-image-badges-bottom">${bottomBadge}</div>` : ""}
+        ${topBadge ? `<div class="box-image-badges box-image-badges-top">${topBadge}</div>` : ""}
         <button type="button" class="icon-button image-action enlarge" data-action="expand-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Enlarge box photo"><i class="bi bi-arrows-angle-expand"></i></button>
         <button type="button" class="icon-button image-action camera" data-action="camera" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Take box photo"><i class="bi bi-camera-fill"></i></button>
         <button type="button" class="icon-button image-action gallery" data-action="gallery" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Choose box photo"><i class="bi bi-images"></i></button>
         <button type="button" class="icon-button image-action clear" data-action="clear-photo" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Clear box photo"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="box-details">
-        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box name" placeholder="Name this box">
+        <input type="text" value="${escapeHtml(boxName)}" data-action="box-name" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" data-autosize-min="96" aria-label="Box name" placeholder="Name this box">
         ${showManualNumberEntry
           ? `<label class="box-number-edit-wrap">
               <span>Box no.</span>
               <div class="box-number-input-shell">
-                <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" aria-label="Box no." min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
+                <input type="number" value="${escapeHtml(numberValue)}" data-action="box-number" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" data-autosize-min="38" aria-label="Box no." min="1" step="1" aria-invalid="${numberError ? "true" : "false"}">
                 ${showAvailableNumberChoices ? `<div class="box-number-popup" role="listbox" aria-label="Available box numbers"><p class="box-number-popup-title">Deleted box numbers</p>${availableNumberChoices}</div>` : ""}
               </div>
             </label>
             ${numberError ? `<p class="box-inline-error">${escapeHtml(numberError)}</p>` : ""}`
-          : `<span class="box-number-label">${escapeHtml(boxNumberLabel)}</span>`}
+          : `<span class="box-number-label" style="--box-number-ch:${escapeHtml(String(autoNumberWidth))}">${escapeHtml(boxNumberLabel)}</span>`}
         <div class="box-property-row">
           <label class="box-property-toggle">
             <span class="box-property-toggle-shell">
@@ -1154,7 +1236,7 @@
               <span aria-hidden="true">•••</span>
             </button>
           </div>
-          <input type="text" class="category-name${duplicateInputClass}" value="${escapeHtml(category.name)}" data-action="category-name" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" aria-label="Category name">
+          <input type="text" class="category-name${duplicateInputClass}" value="${escapeHtml(category.name)}" data-action="category-name" data-category-id="${escapeHtml(category.id)}" data-skip-select="true" data-autosize-min="112" aria-label="Category name">
         </div>
         <button type="button" class="delete-category" data-action="delete-category" data-category-id="${escapeHtml(category.id)}" data-skip-select="true">Delete</button>
       </div>
@@ -1197,6 +1279,8 @@
     }
     const duplicateCategoryIds = getDuplicateCategoryIds();
     const currentViewBox = getCurrentViewBox();
+
+    workspace?.classList.toggle("box-view-active", Boolean(currentViewBox));
 
     const boxCount = state.boxes.length;
     const categoryCount = state.categories.length;
@@ -1247,6 +1331,7 @@
     if (currentViewBox) {
       organizerList.innerHTML = content;
     }
+    autosizeOrganizerInputs();
     bulkActions.hidden = currentViewBox
       ? (selectedContentImageKeys.size === 0 && selectedBoxIds.size === 0)
       : selectedBoxIds.size === 0;
@@ -1729,6 +1814,8 @@
       viewScale: 1,
       fragile: Boolean(options.fragile),
       heavy: Boolean(options.heavy),
+      fragileActivatedAt: Boolean(options.fragile) ? Date.now() : 0,
+      heavyActivatedAt: Boolean(options.heavy) ? Date.now() : 0,
       parentBoxId: options.parentBoxId || null,
       itemsText: ""
     };
@@ -2613,7 +2700,7 @@
     const action = actionElement.dataset.action;
     const context = contextFromElement(actionElement);
 
-    if (["toggle-line", "new-category", "new-box", "new-box-inside", "open-box", "box-view-back", "box-view-root", "categorize-root-segment", "expand-photo", "camera", "gallery", "content-camera", "content-gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "choose-available-box-number", "toggle-category", "toggle-content-image-tags", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
+    if (["toggle-line", "new-category", "new-box", "new-box-inside", "open-box", "box-view-back", "box-view-root", "categorize-root-segment", "expand-photo", "camera", "gallery", "content-camera", "content-gallery", "clear-photo", "draft-camera", "draft-gallery", "draft-clear-photo", "create-box-draft", "cancel-box-draft", "choose-available-box-number", "toggle-category", "toggle-content-image-tags", "toggle-box-items", "delete-category", "bulk-delete", "clear-selection", "close-category-delete", "close-lightbox", "overlay-select-all", "overlay-delete-selected", "overlay-toggle-box", "overlay-move-to"].includes(action)) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -2686,6 +2773,16 @@
 
     if (action === "content-gallery") {
       openContentGallery(actionElement.dataset.boxId);
+      return;
+    }
+
+    if (action === "toggle-box-items") {
+      const box = findBox(actionElement.dataset.boxId);
+      if (box) {
+        box.itemsCollapsed = !box.itemsCollapsed;
+        scheduleSave();
+        renderOrganizer();
+      }
       return;
     }
 
@@ -2920,6 +3017,7 @@
     root.addEventListener("input", (event) => {
       const target = event.target;
       if (target.dataset.action === "category-name") {
+        autosizeInput(target);
         const category = findCategory(target.dataset.categoryId);
         if (category) {
           category.name = target.value.trim() || "Untitled Category";
@@ -2929,6 +3027,7 @@
       }
 
       if (target.dataset.action === "box-name") {
+        autosizeInput(target);
         const box = findBox(target.dataset.boxId);
         if (box) {
           box.name = target.value;
@@ -2961,6 +3060,7 @@
       }
 
       if (target.dataset.action === "box-number") {
+        autosizeInput(target);
         const box = findBox(target.dataset.boxId);
         if (box) {
           box.numberInput = target.value;
@@ -2994,6 +3094,7 @@
         const box = findBox(target.dataset.boxId);
         if (box) {
           box.fragile = target.checked;
+          box.fragileActivatedAt = target.checked ? Date.now() : 0;
           scheduleSave();
           renderOrganizer();
         }
@@ -3004,6 +3105,7 @@
         const box = findBox(target.dataset.boxId);
         if (box) {
           box.heavy = target.checked;
+          box.heavyActivatedAt = target.checked ? Date.now() : 0;
           scheduleSave();
           renderOrganizer();
         }
