@@ -99,7 +99,8 @@
       availableBoxNumbers: [],
       nextBoxNumber: 1,
       nextCategoryNumber: 1,
-      universalBoxScaleSourceId: null
+      universalBoxScaleSourceId: null,
+      contentImageScaleSourceKey: null
     }
   });
 
@@ -121,6 +122,7 @@
     const match = /^Category\s+(\d+)$/i.exec(String(name).trim());
     return match ? Number.parseInt(match[1], 10) : null;
   };
+  const getContentImageScaleKey = (boxId, imageId) => `${boxId}:${imageId}`;
 
   function getAutosizeMeasure() {
     if (autosizeMeasure) {
@@ -261,13 +263,14 @@
     state.categories = Array.isArray(state.categories) ? state.categories : [];
     state.boxes = Array.isArray(state.boxes) ? state.boxes : [];
     state.layout = Array.isArray(state.layout) ? state.layout : [];
-    state.meta = state.meta || { autoBoxNumbers: true, boxOrderDirection: "top", activeBoxViewId: null, availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null };
+    state.meta = state.meta || { autoBoxNumbers: true, boxOrderDirection: "top", activeBoxViewId: null, availableCategoryNumbers: [], availableBoxNumbers: [], nextBoxNumber: 1, nextCategoryNumber: 1, universalBoxScaleSourceId: null, contentImageScaleSourceKey: null };
     state.meta.autoBoxNumbers = state.meta.autoBoxNumbers !== false;
     state.meta.boxOrderDirection = state.meta.boxOrderDirection === "bottom" ? "bottom" : "top";
     state.meta.activeBoxViewId = typeof state.meta.activeBoxViewId === "string" ? state.meta.activeBoxViewId : null;
     state.meta.availableCategoryNumbers = Array.isArray(state.meta.availableCategoryNumbers) ? state.meta.availableCategoryNumbers : [];
     state.meta.availableBoxNumbers = Array.isArray(state.meta.availableBoxNumbers) ? state.meta.availableBoxNumbers : [];
     state.meta.universalBoxScaleSourceId = typeof state.meta.universalBoxScaleSourceId === "string" ? state.meta.universalBoxScaleSourceId : null;
+    state.meta.contentImageScaleSourceKey = typeof state.meta.contentImageScaleSourceKey === "string" ? state.meta.contentImageScaleSourceKey : null;
     state.categoriesVisible = state.categoriesVisible !== false;
 
     const boxIds = new Set(state.boxes.map((box) => box.id));
@@ -324,7 +327,10 @@
         tags: Array.isArray(image.tags) ? image.tags.map((tag) => String(tag || "").trim()).filter(Boolean) : [],
         tagDraft: typeof image.tagDraft === "string" ? image.tagDraft : "",
         tagsCollapsed: Boolean(image.tagsCollapsed),
-        viewScale: normalizeBoxScale(image.viewScale)
+        viewScale: normalizeBoxScale(image.viewScale),
+        scaleSelected: Boolean(image.scaleSelected),
+        restoreViewScale: Number.isFinite(Number.parseFloat(image.restoreViewScale)) ? normalizeBoxScale(image.restoreViewScale) : null,
+        scaleSourceKey: typeof image.scaleSourceKey === "string" ? image.scaleSourceKey : null
       })).filter((image) => image.blob) : [];
       if (Number.isInteger(box.number) && box.number > 0) {
         usedBoxNumbers.add(box.number);
@@ -341,6 +347,11 @@
 
     if (state.meta.activeBoxViewId && !findBox(state.meta.activeBoxViewId)) {
       state.meta.activeBoxViewId = null;
+    }
+
+    const hasContentImageScaleSource = state.boxes.some((box) => box.contentImages?.some((image) => getContentImageScaleKey(box.id, image.id) === state.meta.contentImageScaleSourceKey));
+    if (state.meta.contentImageScaleSourceKey && !hasContentImageScaleSource) {
+      state.meta.contentImageScaleSourceKey = null;
     }
 
     state.meta.availableBoxNumbers = [...new Set(
@@ -989,6 +1000,10 @@
         <div class="box-content-photo-column" style="--content-image-scale:${escapeHtml(imageScale.toFixed(2))}">
           <figure class="box-content-photo"><img src="${escapeHtml(getContentImageSrc(box.id, image))}" alt="${escapeHtml(getBoxLabel(box))} content photo" loading="lazy"></figure>
           <div class="box-content-scale-controls">
+            <label class="box-scale-toggle box-content-scale-toggle">
+              <input type="checkbox" data-action="content-image-scale-select" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" data-skip-select="true" aria-label="Apply content image size changes with checked images" ${image.scaleSelected ? "checked" : ""}>
+              <span></span>
+            </label>
             <label class="box-scale-select-wrap box-content-scale-select-wrap">
               <i class="bi bi-zoom-in"></i>
               <select data-action="content-image-scale" data-box-id="${escapeHtml(box.id)}" data-image-id="${escapeHtml(image.id)}" data-skip-select="true" aria-label="Content image size multiplier">
@@ -1139,6 +1154,54 @@
 
   function renderBoxScaleOptions(selectedScale) {
     return BOX_SCALE_OPTIONS.map((scale) => `<option value="${scale}" ${scale === selectedScale ? "selected" : ""}>${scale}x</option>`).join("");
+  }
+
+  function restoreContentImageScales(sourceKey) {
+    state.boxes.forEach((box) => {
+      box.contentImages?.forEach((image) => {
+        if (image.scaleSourceKey === sourceKey) {
+          image.viewScale = normalizeBoxScale(image.restoreViewScale);
+          image.restoreViewScale = null;
+          image.scaleSourceKey = null;
+        }
+        if (getContentImageScaleKey(box.id, image.id) === sourceKey) {
+          image.scaleSelected = false;
+        }
+      });
+    });
+    if (state.meta.contentImageScaleSourceKey === sourceKey) {
+      state.meta.contentImageScaleSourceKey = null;
+    }
+  }
+
+  function applyContentImageScaleSource(boxId, imageId) {
+    const sourceKey = getContentImageScaleKey(boxId, imageId);
+    const sourceBox = findBox(boxId);
+    const sourceImage = sourceBox?.contentImages.find((entry) => entry.id === imageId);
+    if (!sourceImage) {
+      return;
+    }
+
+    if (state.meta.contentImageScaleSourceKey && state.meta.contentImageScaleSourceKey !== sourceKey) {
+      restoreContentImageScales(state.meta.contentImageScaleSourceKey);
+    }
+
+    const nextScale = normalizeBoxScale(sourceImage.viewScale);
+    state.boxes.forEach((box) => {
+      box.contentImages?.forEach((image) => {
+        const imageKey = getContentImageScaleKey(box.id, image.id);
+        image.scaleSelected = imageKey === sourceKey;
+        if (imageKey !== sourceKey) {
+          image.restoreViewScale = image.viewScale;
+          image.scaleSourceKey = sourceKey;
+          image.viewScale = nextScale;
+        } else {
+          image.restoreViewScale = null;
+          image.scaleSourceKey = null;
+        }
+      });
+    });
+    state.meta.contentImageScaleSourceKey = sourceKey;
   }
 
   function renderBox(box, context, options = {}) {
@@ -1527,7 +1590,8 @@
       type: file.type,
       name: file.name,
       updatedAt: Date.now(),
-      viewScale: 1
+      viewScale: 1,
+      scaleSelected: false
     }];
     scheduleSave();
     renderOrganizer();
@@ -3094,7 +3158,16 @@
         const box = findBox(target.dataset.boxId);
         const image = box?.contentImages.find((entry) => entry.id === target.dataset.imageId);
         if (image) {
-          image.viewScale = normalizeBoxScale(target.value);
+          const nextScale = normalizeBoxScale(target.value);
+          if (image.scaleSelected && state.meta.contentImageScaleSourceKey === getContentImageScaleKey(target.dataset.boxId, target.dataset.imageId)) {
+            state.boxes.forEach((entryBox) => {
+              entryBox.contentImages?.forEach((entryImage) => {
+                entryImage.viewScale = nextScale;
+              });
+            });
+          } else {
+            image.viewScale = nextScale;
+          }
           scheduleSave();
           renderOrganizer();
         }
@@ -3140,6 +3213,23 @@
         state.meta.universalBoxScaleSourceId = target.checked ? boxId : (state.meta.universalBoxScaleSourceId === boxId ? null : state.meta.universalBoxScaleSourceId);
         scheduleSave();
         renderOrganizer();
+        return;
+      }
+
+      if (target.dataset.action === "content-image-scale-select") {
+        const box = findBox(target.dataset.boxId);
+        const image = box?.contentImages.find((entry) => entry.id === target.dataset.imageId);
+        if (image) {
+          if (target.checked) {
+            applyContentImageScaleSource(target.dataset.boxId, target.dataset.imageId);
+          } else if (state.meta.contentImageScaleSourceKey === getContentImageScaleKey(target.dataset.boxId, target.dataset.imageId)) {
+            restoreContentImageScales(state.meta.contentImageScaleSourceKey);
+          } else {
+            image.scaleSelected = false;
+          }
+          scheduleSave();
+          renderOrganizer();
+        }
       }
     });
 

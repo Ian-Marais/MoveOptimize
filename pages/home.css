@@ -461,10 +461,20 @@ button {
 .box-content-scale-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 6px;
   min-height: 28px;
   padding: 4px 6px;
   background: #f8fbff;
+}
+
+.box-content-scale-toggle {
+  min-height: 20px;
+  padding: 0 4px;
+}
+
+.box-content-scale-toggle span {
+  display: none;
 }
 
 .box-content-scale-select-wrap {
