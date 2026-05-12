@@ -29,6 +29,7 @@
   const PLACEHOLDER_IMAGE = "/assets/box-placeholder.svg";
   const LONG_PRESS_MS = 500;
   const BOX_SCALE_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
+  const THEME_STORAGE_KEY = "moveoptimize-theme";
 
   const workspace = root.querySelector(".workspace");
   const organizerList = root.querySelector("#organizerList");
@@ -42,6 +43,7 @@
   const summary = root.querySelector("[data-summary]");
   const categoryDuplicateWarning = root.querySelector("#categoryDuplicateWarning");
   const bulkActions = root.querySelector("#bulkActions");
+  const themeToggleButton = root.querySelector("#themeToggleButton");
   const scrollToTopButton = root.querySelector("#scrollToTopButton");
   const scrollToBottomButton = root.querySelector("#scrollToBottomButton");
   const cameraInput = root.querySelector("#cameraInput");
@@ -87,6 +89,36 @@
   let pendingBoxDraft = null;
   let searchStatusMessage = "";
   let autosizeMeasure = null;
+
+  function setTheme(theme) {
+    const nextTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = nextTheme;
+    if (themeToggleButton) {
+      const darkActive = nextTheme === "dark";
+      themeToggleButton.setAttribute("aria-pressed", darkActive ? "true" : "false");
+      themeToggleButton.setAttribute("aria-label", darkActive ? "Enable light mode" : "Enable dark mode");
+      const icon = themeToggleButton.querySelector("i");
+      if (icon) {
+        icon.className = `bi ${darkActive ? "bi-sun-fill" : "bi-moon-stars"}`;
+      }
+    }
+  }
+
+  function loadThemePreference() {
+    try {
+      return localStorage.getItem(THEME_STORAGE_KEY) || "light";
+    } catch {
+      return "light";
+    }
+  }
+
+  function persistThemePreference(theme) {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage failures and keep the session theme only.
+    }
+  }
 
   const emptyState = () => ({
     categoriesVisible: true,
@@ -3393,6 +3425,12 @@
       }
     });
 
+    themeToggleButton?.addEventListener("click", () => {
+      const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      setTheme(nextTheme);
+      persistThemePreference(nextTheme);
+    });
+
     scrollToTopButton?.addEventListener("click", () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -3516,6 +3554,7 @@
     state = await readStoredState() || emptyState();
     normalizeState();
     bindEvents();
+    setTheme(loadThemePreference());
     renderOrganizer();
     updateScrollButtons();
   }
