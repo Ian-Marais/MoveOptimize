@@ -1283,6 +1283,7 @@
           </label>
           <label class="box-scale-toggle">
             <input type="checkbox" data-action="box-scale-universal" data-box-id="${escapeHtml(box.id)}" data-skip-select="true" ${isUniversalSource ? "checked" : ""}>
+            <span class="box-scale-toggle-box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
             <span>All boxes</span>
           </label>
         </div>

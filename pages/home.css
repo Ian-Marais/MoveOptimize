@@ -1409,6 +1409,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 3.75px;
+  height: 24px;
   min-height: 24px;
   padding: 0 6px;
   border: 1px solid var(--line);
@@ -1417,6 +1418,7 @@ button {
   color: var(--ink);
   font-size: 0.6rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .box-scale-select-wrap i {
@@ -1437,10 +1439,55 @@ button {
   cursor: not-allowed;
 }
 
-.box-scale-toggle input {
-  width: 11.25px;
-  height: 11.25px;
+.box-scale-toggle:not(.box-content-scale-toggle) input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  min-width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
   margin: 0;
+}
+
+.box-scale-toggle-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  min-width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  border: 1px solid #9fb5cb;
+  border-radius: 0;
+  background: #fff;
+  color: transparent;
+}
+
+.box-scale-toggle-box i {
+  font-size: 0.58rem;
+  opacity: 0;
+}
+
+.box-scale-toggle:not(.box-content-scale-toggle) input:checked + .box-scale-toggle-box {
+  border-color: var(--blue-dark);
+  background-color: var(--blue-dark);
+  color: #fff;
+}
+
+.box-scale-toggle:not(.box-content-scale-toggle) input:checked + .box-scale-toggle-box i {
+  opacity: 1;
+}
+
+.box-scale-toggle:not(.box-content-scale-toggle) input:focus-visible {
+  outline: 0;
+}
+
+.box-scale-toggle:not(.box-content-scale-toggle) input:focus-visible + .box-scale-toggle-box {
+  outline: 2px solid rgba(15, 111, 189, 0.24);
+  outline-offset: 1px;
 }
 
 .bulk-actions {
