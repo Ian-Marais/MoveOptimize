@@ -42,6 +42,8 @@
   const summary = root.querySelector("[data-summary]");
   const categoryDuplicateWarning = root.querySelector("#categoryDuplicateWarning");
   const bulkActions = root.querySelector("#bulkActions");
+  const scrollToTopButton = root.querySelector("#scrollToTopButton");
+  const scrollToBottomButton = root.querySelector("#scrollToBottomButton");
   const cameraInput = root.querySelector("#cameraInput");
   const galleryInput = root.querySelector("#galleryInput");
   const contentCameraInput = root.querySelector("#contentCameraInput");
@@ -1413,6 +1415,28 @@
       : selectedBoxIds.size === 0;
     renderCategoryDeleteOverlay();
     applyPendingSearchJump();
+    updateScrollButtons();
+  }
+
+  function updateScrollButtons() {
+    const scrollTop = window.scrollY || window.pageYOffset || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const scrollHeight = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight,
+      root.scrollHeight
+    );
+    const threshold = 12;
+    const canScrollUp = scrollTop > threshold;
+    const canScrollDown = scrollTop + viewportHeight < scrollHeight - threshold;
+
+    if (scrollToTopButton) {
+      scrollToTopButton.hidden = !canScrollUp;
+    }
+
+    if (scrollToBottomButton) {
+      scrollToBottomButton.hidden = !canScrollDown;
+    }
   }
 
   function getRootInsertIndex(context) {
@@ -3368,6 +3392,22 @@
       }
     });
 
+    scrollToTopButton?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    scrollToBottomButton?.addEventListener("click", () => {
+      const scrollHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        root.scrollHeight
+      );
+      window.scrollTo({ top: scrollHeight, behavior: "smooth" });
+    });
+
+    window.addEventListener("scroll", updateScrollButtons, { passive: true });
+    window.addEventListener("resize", updateScrollButtons);
+
     confirmModal.addEventListener("click", (event) => {
       const button = event.target.closest("[data-confirm]");
       if (button) {
@@ -3476,6 +3516,7 @@
     normalizeState();
     bindEvents();
     renderOrganizer();
+    updateScrollButtons();
   }
 
   init().catch((error) => {

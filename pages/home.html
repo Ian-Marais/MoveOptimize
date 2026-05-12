@@ -42,6 +42,15 @@
     <button type="button" data-action="clear-selection">Cancel</button>
   </aside>
 
+  <div class="scroll-fab-stack" aria-label="Page scroll controls">
+    <button id="scrollToTopButton" type="button" class="scroll-fab" aria-label="Scroll to top" hidden>
+      <i class="bi bi-arrow-up" aria-hidden="true"></i>
+    </button>
+    <button id="scrollToBottomButton" type="button" class="scroll-fab" aria-label="Scroll to bottom" hidden>
+      <i class="bi bi-arrow-down" aria-hidden="true"></i>
+    </button>
+  </div>
+
   <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
   <input id="galleryInput" type="file" accept="image/*" hidden>
   <input id="contentCameraInput" type="file" accept="image/*" capture="environment" hidden>

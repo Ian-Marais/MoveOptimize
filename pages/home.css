@@ -64,7 +64,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: calc(14px + env(safe-area-inset-top)) clamp(16px, 4vw, 36px) 14px;
+  padding: calc(14px + env(safe-area-inset-top)) clamp(84px, 12vw, 120px) 14px clamp(16px, 4vw, 36px);
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 22px rgba(15, 34, 58, 0.08);
@@ -140,9 +140,14 @@ button {
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
+  padding-top: 54px;
 }
 
 .profile-button {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  right: clamp(16px, 4vw, 36px);
+  z-index: 30;
   display: inline-grid;
   place-items: center;
   width: 44px;
@@ -159,6 +164,41 @@ button {
 
 .profile-button i {
   font-size: 1.3rem;
+}
+
+.scroll-fab-stack {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 26;
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.scroll-fab {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.97);
+  color: var(--blue-dark);
+  box-shadow: 0 10px 24px rgba(20, 35, 55, 0.16);
+}
+
+.scroll-fab i {
+  font-size: 1rem;
+}
+
+.scroll-fab:focus-visible,
+.profile-button:focus-visible {
+  outline: 2px solid rgba(15, 111, 189, 0.28);
+  outline-offset: 2px;
 }
 
 .category-toggle {
@@ -1765,10 +1805,11 @@ button {
   .toolbar-right {
     width: 100%;
     align-items: stretch;
+    padding-top: 22px;
   }
 
   .profile-button {
-    align-self: flex-end;
+    right: max(12px, env(safe-area-inset-right));
   }
 
   .toolbar-toggles {
@@ -1804,6 +1845,11 @@ button {
     bottom: max(12px, env(safe-area-inset-bottom));
     grid-template-columns: 1fr 1fr;
     width: calc(100vw - 24px);
+  }
+
+  .scroll-fab-stack {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
 
