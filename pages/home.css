@@ -64,11 +64,17 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: calc(14px + env(safe-area-inset-top)) clamp(84px, 12vw, 120px) 14px clamp(16px, 4vw, 36px);
+  padding: calc(14px + env(safe-area-inset-top)) clamp(16px, 4vw, 36px) 14px clamp(16px, 4vw, 36px);
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 22px rgba(15, 34, 58, 0.08);
   backdrop-filter: blur(16px);
+}
+
+.app-toolbar > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 56px;
 }
 
 .app-toolbar h1 {
@@ -129,8 +135,9 @@ button {
 
 .toolbar-toggles {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-end;
   gap: 6px 12px;
 }
@@ -168,21 +175,21 @@ button {
 
 .scroll-fab-stack {
   position: fixed;
-  right: max(16px, env(safe-area-inset-right));
+  right: max(6px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 26;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   justify-items: end;
 }
 
 .scroll-fab {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -192,7 +199,7 @@ button {
 }
 
 .scroll-fab i {
-  font-size: 1rem;
+  font-size: 0.86rem;
 }
 
 .scroll-fab:focus-visible,
@@ -204,7 +211,10 @@ button {
 .category-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: flex-start;
+  gap: 8px;
+  width: fit-content;
+  min-width: 0;
   min-height: 36px;
   color: var(--ink);
   font-weight: 700;
@@ -1800,6 +1810,7 @@ button {
 @media (max-width: 400px) {
   .app-toolbar {
     align-items: flex-start;
+    padding-right: max(12px, env(safe-area-inset-right));
   }
 
   .toolbar-right {
@@ -1814,7 +1825,7 @@ button {
 
   .toolbar-toggles {
     width: 100%;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .app-toolbar {
@@ -1848,7 +1859,7 @@ button {
   }
 
   .scroll-fab-stack {
-    right: max(12px, env(safe-area-inset-right));
+    right: max(4px, env(safe-area-inset-right));
     bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
