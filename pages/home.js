@@ -32,6 +32,7 @@
   const THEME_STORAGE_KEY = "moveoptimize-theme";
 
   const workspace = root.querySelector(".workspace");
+  const appToolbar = root.querySelector(".app-toolbar");
   const organizerList = root.querySelector("#organizerList");
   const categoryToggle = root.querySelector("#categoryToggle");
   const autoBoxNumberToggle = root.querySelector("#autoBoxNumberToggle");
@@ -101,6 +102,12 @@
       if (icon) {
         icon.className = `bi ${darkActive ? "bi-sun-fill" : "bi-moon-stars"}`;
       }
+    }
+  }
+
+  function updateLayoutMetrics() {
+    if (appToolbar) {
+      root.style.setProperty("--app-toolbar-height", `${appToolbar.getBoundingClientRect().height}px`);
     }
   }
 
@@ -576,7 +583,7 @@
     return `<section class="uncategorized-notice">
       <p><strong>Uncategorized:</strong> The ${escapeHtml(label)}.</p>
       <button type="button" data-action="categorize-root-segment" ${contextAttributes(context)}>
-        Turn ${count === 1 ? "it" : "them"} into a category
+        Put boxes into catagory
       </button>
     </section>`;
   }
@@ -1077,7 +1084,7 @@
         </button>
       </div>
       <div class="box-view-header">
-        <button type="button" class="toolbar-action-button box-view-back" data-action="box-view-back">${box.parentBoxId ? "Back" : "Root"}</button>
+        ${box.parentBoxId ? `<button type="button" class="toolbar-action-button box-view-back" data-action="box-view-back">Back</button>` : ""}
         <div class="box-view-heading">
           <div class="box-view-breadcrumbs"><button type="button" data-action="box-view-root">Home</button>${breadcrumbs.length ? `<span>/</span>${breadcrumbHtml}` : ""}</div>
         </div>
@@ -1378,6 +1385,14 @@
     return fragments.join("");
   }
 
+  function renderRootPathHeader() {
+    return `<div class="box-view-header root-view-header">
+      <div class="box-view-heading">
+        <div class="box-view-breadcrumbs"><span>Home</span></div>
+      </div>
+    </div>`;
+  }
+
   function renderOrganizer() {
     normalizeState();
     syncAutoBoxNumbersByDirection();
@@ -1437,7 +1452,7 @@
       : "";
 
     organizerList.innerHTML = hasContent
-      ? `${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}${renderInsertLine({ scope: "root-end" }, { forceActive: true, extraClass: "root-trailing" })}`
+      ? `${currentViewBox ? "" : renderRootPathHeader()}${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}${renderInsertLine({ scope: "root-end" }, { forceActive: true, extraClass: "root-trailing" })}`
       : `${emptyMessage}${renderEmptyRootInsertLines()}`;
     if (currentViewBox) {
       organizerList.innerHTML = content;
@@ -1448,6 +1463,7 @@
       : selectedBoxIds.size === 0;
     renderCategoryDeleteOverlay();
     applyPendingSearchJump();
+    updateLayoutMetrics();
     updateScrollButtons();
   }
 
@@ -3445,7 +3461,10 @@
     });
 
     window.addEventListener("scroll", updateScrollButtons, { passive: true });
-    window.addEventListener("resize", updateScrollButtons);
+    window.addEventListener("resize", () => {
+      updateLayoutMetrics();
+      updateScrollButtons();
+    });
 
     confirmModal.addEventListener("click", (event) => {
       const button = event.target.closest("[data-confirm]");
@@ -3555,6 +3574,7 @@
     normalizeState();
     bindEvents();
     setTheme(loadThemePreference());
+    updateLayoutMetrics();
     renderOrganizer();
     updateScrollButtons();
   }

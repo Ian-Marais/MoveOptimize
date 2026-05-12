@@ -40,6 +40,7 @@
 :root[data-theme="dark"] .category-header,
 :root[data-theme="dark"] .category-drag-frame,
 :root[data-theme="dark"] .category-drag-handle,
+:root[data-theme="dark"] .category-name,
 :root[data-theme="dark"] .box-view-header,
 :root[data-theme="dark"] .box-content-panel,
 :root[data-theme="dark"] .nested-boxes-section,
@@ -123,6 +124,36 @@
 
 :root[data-theme="dark"] .box-items-toggle {
   border-top-color: var(--line);
+}
+
+:root[data-theme="dark"] .box-property-toggle-box,
+:root[data-theme="dark"] .box-scale-toggle-box {
+  background: #101923;
+  border-color: #4f667d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .box-property-toggle-shell input:checked + .box-property-toggle-box {
+  background: rgba(255, 139, 128, 0.18);
+  border-color: var(--danger);
+  color: #ffd7d3;
+}
+
+:root[data-theme="dark"] .box-property-toggle-shell input:checked + .box-property-toggle-box-heavy {
+  background: rgba(255, 195, 109, 0.18);
+  border-color: var(--warning);
+  color: #ffe0ab;
+}
+
+:root[data-theme="dark"] .box-scale-toggle:not(.box-content-scale-toggle) input:checked + .box-scale-toggle-box {
+  background: rgba(90, 169, 232, 0.22);
+  border-color: var(--blue);
+  color: #eef6ff;
+}
+
+:root[data-theme="dark"] .category-name::placeholder,
+:root[data-theme="dark"] .box-details input::placeholder {
+  color: var(--muted);
 }
 
 :root[data-theme="dark"] .box-content-tag-toggle {
@@ -496,10 +527,24 @@ button {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
+  position: sticky;
+  top: calc(var(--app-toolbar-height, 0px) - 1px);
+  z-index: 17;
 }
 
 .workspace.box-view-active .box-view-header {
   margin: -1px calc(clamp(12px, 3vw, 32px) * -1) 0;
+  gap: 8px;
+  padding: 7px clamp(16px, 4vw, 36px) 7px clamp(6px, 1.6vw, 14px);
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 10px 24px rgba(15, 34, 58, 0.08);
+}
+
+.root-view-header {
+  margin: -18px calc(clamp(12px, 3vw, 32px) * -1) 0;
   gap: 8px;
   padding: 7px clamp(16px, 4vw, 36px) 7px clamp(6px, 1.6vw, 14px);
   border-top: 0;
