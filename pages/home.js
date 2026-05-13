@@ -1664,6 +1664,7 @@
       type: file.type,
       name: file.name,
       updatedAt: Date.now(),
+      tagsCollapsed: true,
       viewScale: 1,
       scaleSelected: false
     }];
