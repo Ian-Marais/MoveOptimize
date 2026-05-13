@@ -219,7 +219,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: calc(14px + env(safe-area-inset-top)) clamp(16px, 4vw, 36px) 14px clamp(16px, 4vw, 36px);
+  padding: calc(14px + env(safe-area-inset-top)) clamp(4px, 1vw, 10px) 14px clamp(4px, 1vw, 10px);
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 22px rgba(15, 34, 58, 0.08);
@@ -308,7 +308,7 @@ button {
 .profile-button {
   position: fixed;
   top: calc(14px + env(safe-area-inset-top));
-  right: clamp(16px, 4vw, 36px);
+  right: clamp(4px, 1vw, 10px);
   z-index: 30;
   display: inline-grid;
   place-items: center;
@@ -456,7 +456,7 @@ button {
 .workspace {
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 18px clamp(12px, 3vw, 32px) 128px;
+  padding: 18px clamp(4px, 1vw, 12px) 128px;
 }
 
 .workspace.box-view-active {
@@ -533,7 +533,7 @@ button {
 }
 
 .workspace.box-view-active .box-view-header {
-  margin: -1px calc(clamp(12px, 3vw, 32px) * -1) 0;
+  margin: -1px calc(clamp(4px, 1vw, 12px) * -1) 0;
   gap: 8px;
   padding: 7px clamp(16px, 4vw, 36px) 7px clamp(6px, 1.6vw, 14px);
   border-top: 0;
@@ -544,7 +544,7 @@ button {
 }
 
 .root-view-header {
-  margin: -18px calc(clamp(12px, 3vw, 32px) * -1) 0;
+  margin: -18px calc(clamp(4px, 1vw, 12px) * -1) 0;
   gap: 8px;
   padding: 7px clamp(16px, 4vw, 36px) 7px clamp(6px, 1.6vw, 14px);
   border-top: 0;
@@ -891,8 +891,8 @@ button {
 
 .workspace.box-view-active .box-items-dock {
   position: fixed;
-  left: max(clamp(12px, 3vw, 32px), calc((100vw - 1120px) / 2 + clamp(12px, 3vw, 32px)));
-  right: max(clamp(12px, 3vw, 32px), calc((100vw - 1120px) / 2 + clamp(12px, 3vw, 32px)));
+  left: max(clamp(4px, 1vw, 12px), calc((100vw - 1120px) / 2 + clamp(4px, 1vw, 12px)));
+  right: max(clamp(4px, 1vw, 12px), calc((100vw - 1120px) / 2 + clamp(4px, 1vw, 12px)));
   bottom: 0;
   z-index: 18;
   margin-top: 0;
@@ -1164,7 +1164,7 @@ button {
 .category-boxes {
   display: grid;
   gap: 0;
-  padding-left: clamp(12px, 4vw, 32px);
+  padding-left: clamp(4px, 1vw, 12px);
 }
 
 .uncategorized-notice {
@@ -2042,7 +2042,7 @@ button {
 @media (max-width: 400px) {
   .app-toolbar {
     align-items: flex-start;
-    padding-right: max(12px, env(safe-area-inset-right));
+    padding-right: max(4px, env(safe-area-inset-right));
   }
 
   .toolbar-right {
@@ -2052,7 +2052,7 @@ button {
   }
 
   .profile-button {
-    right: max(12px, env(safe-area-inset-right));
+    right: max(4px, env(safe-area-inset-right));
   }
 
   .toolbar-toggles {
