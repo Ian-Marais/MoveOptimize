@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="theme-color" content="#0f6fbd">
     <meta name="description" content="MoveOptimize helps you photograph, group, and find packed boxes when moving house.">
     <title>MoveOptimize</title>
@@ -16,24 +19,16 @@
     <script src="/assets/vendor/roselt/roselt.js"></script>
     <script>
       window.Roselt.start();
+
       if ("serviceWorker" in navigator) {
-        const isLocalDevelopmentHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
         window.addEventListener("load", async () => {
-          if (isLocalDevelopmentHost) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(registrations.map((registration) => registration.unregister()));
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
 
-            if ("caches" in window) {
-              const cacheKeys = await caches.keys();
-              await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
-            }
-
-            return;
+          if ("caches" in window) {
+            const cacheKeys = await caches.keys();
+            await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
           }
-
-          const registration = await navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" });
-          await registration.update();
         });
       }
     </script>

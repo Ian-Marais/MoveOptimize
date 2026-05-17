@@ -222,7 +222,7 @@ button {
   padding: calc(10px + env(safe-area-inset-top)) clamp(4px, 1vw, 10px) 10px clamp(4px, 1vw, 10px);
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 8px 22px rgba(15, 34, 58, 0.08);
+  box-shadow: none;
   backdrop-filter: blur(16px);
 }
 
@@ -259,8 +259,9 @@ button {
 }
 
 .toolbar-search input {
-  flex: 0 1 83px;
-  max-width: 83px;
+  flex: 0 1 auto;
+  width: 83px;
+  max-width: 100%;
   min-height: 32px;
   padding: 0 9px;
   border: 1px solid var(--line);
@@ -319,7 +320,7 @@ button {
   border-radius: 999px;
   background: var(--panel);
   color: var(--blue-dark);
-  box-shadow: 0 6px 18px rgba(20, 35, 55, 0.08);
+  box-shadow: none;
 }
 
 .profile-button i {
@@ -348,7 +349,7 @@ button {
   border-radius: 999px;
   background: color-mix(in srgb, var(--panel) 97%, transparent);
   color: var(--blue-dark);
-  box-shadow: 0 10px 24px rgba(20, 35, 55, 0.16);
+  box-shadow: none;
 }
 
 .theme-fab[aria-pressed="false"] {
@@ -503,12 +504,13 @@ button {
   border-radius: 8px;
   background: #eef7ff;
   color: var(--blue-dark);
-  box-shadow: 0 4px 14px rgba(20, 35, 55, 0.12);
+  box-shadow: none;
 }
 
 .box-view-content-action i {
   font-size: 0.86rem;
 }
+
 
 .box-view-header,
 .box-content-panel,
@@ -517,7 +519,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 4px 16px rgba(20, 35, 55, 0.07);
+  box-shadow: none;
 }
 
 .box-view-header {
@@ -539,7 +541,7 @@ button {
   border-left: 0;
   border-right: 0;
   border-radius: 0 0 16px 16px;
-  box-shadow: 0 10px 24px rgba(15, 34, 58, 0.08);
+  box-shadow: none;
 }
 
 .root-view-header {
@@ -550,7 +552,7 @@ button {
   border-left: 0;
   border-right: 0;
   border-radius: 0 0 16px 16px;
-  box-shadow: 0 10px 24px rgba(15, 34, 58, 0.08);
+  box-shadow: none;
 }
 
 .workspace.box-view-active .box-view-back {
@@ -644,7 +646,7 @@ button {
 .box-content-card.selected .box-content-tag-editor {
   border-color: var(--blue);
   background: #f0f8ff;
-  box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16), 0 8px 22px rgba(20, 35, 55, 0.12);
+  box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16);
 }
 
 .box-content-photo-column {
@@ -813,6 +815,8 @@ button {
   align-content: flex-start;
   gap: 6px;
   min-height: 54px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .box-content-tag-list.empty {
@@ -829,6 +833,10 @@ button {
   color: var(--blue-dark);
   font-size: 0.84rem;
   font-weight: 700;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .box-content-tag-placeholder {
@@ -839,6 +847,7 @@ button {
 .box-content-tag-input {
   display: block;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -885,7 +894,7 @@ button {
   background: rgba(255, 255, 255, 0.96);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  box-shadow: 0 -10px 28px rgba(20, 35, 55, 0.08);
+  box-shadow: none;
 }
 
 .workspace.box-view-active .box-items-dock {
@@ -980,7 +989,7 @@ button {
   border-radius: 8px;
   overflow: visible;
   background: #ffffff;
-  box-shadow: 0 4px 14px rgba(20, 35, 55, 0.06);
+  box-shadow: none;
   touch-action: manipulation;
 }
 
@@ -1266,7 +1275,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  box-shadow: 0 4px 16px rgba(20, 35, 55, 0.07);
+  box-shadow: none;
   isolation: isolate;
   touch-action: manipulation;
 }
@@ -1274,12 +1283,12 @@ button {
 .box-card.selected {
   border-color: var(--blue);
   background: #f0f8ff;
-  box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16), 0 8px 22px rgba(20, 35, 55, 0.12);
+  box-shadow: 0 0 0 3px rgba(15, 111, 189, 0.16);
 }
 
 .box-card.universal-source {
   border-color: #6f9dd2;
-  box-shadow: 0 0 0 3px rgba(111, 157, 210, 0.14), 0 8px 22px rgba(20, 35, 55, 0.12);
+  box-shadow: 0 0 0 3px rgba(111, 157, 210, 0.14);
 }
 
 .box-image-shell {
@@ -1327,7 +1336,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 2px;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(80, 10, 10, 0.28);
+  box-shadow: none;
 }
 
 .box-fragile-badge {
@@ -1728,7 +1737,7 @@ button {
   padding: 20px;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
 }
 
 .confirm-panel {
@@ -1823,6 +1832,7 @@ button {
 
 .box-create-field input {
   width: 100%;
+  max-width: 100%;
   min-height: 46px;
   padding: 0 14px;
   border: 1px solid var(--line);
@@ -1865,7 +1875,7 @@ button {
   max-height: calc(100vh - 32px);
   border-radius: 8px;
   background: transparent;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+  box-shadow: none;
 }
 
 .lightbox-close {
@@ -1960,7 +1970,7 @@ button {
   background: var(--ink);
   color: #fff;
   font-weight: 800;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 .drag-ghost-category {
@@ -1974,7 +1984,7 @@ button {
 
 .drag-ghost-category .category-header {
   margin-top: 0;
-  box-shadow: 0 20px 40px rgba(20, 35, 55, 0.22);
+  box-shadow: none;
 }
 
 .drag-ghost-category .category-drag-handle {
@@ -2014,7 +2024,7 @@ button {
   border-radius: 12px;
   background: rgba(15, 111, 189, 0.96);
   color: #fff;
-  box-shadow: 0 20px 40px rgba(20, 35, 55, 0.26);
+  box-shadow: none;
 }
 
 .drag-ghost-box-icon i {
@@ -2035,7 +2045,7 @@ button {
   font-weight: 800;
   line-height: 20px;
   text-align: center;
-  box-shadow: 0 8px 18px rgba(20, 35, 55, 0.18);
+  box-shadow: none;
 }
 
 @media (max-width: 400px) {
@@ -2093,6 +2103,72 @@ button {
     right: max(4px, env(safe-area-inset-right));
     bottom: calc(72px + env(safe-area-inset-bottom));
   }
+}
+
+:root {
+  --site-red: #c40000;
+  --panel: var(--site-red);
+  --surface: var(--site-red);
+}
+
+:root[data-theme="dark"] {
+  --panel: var(--site-red);
+  --surface: var(--site-red);
+}
+
+body,
+.move-app,
+.workspace,
+.app-toolbar,
+.toolbar-search input,
+.toolbar-search #itemSearchButton,
+.toolbar-action-button,
+.profile-button,
+.scroll-fab,
+.box-view-content-action,
+.box-view-header,
+.root-view-header,
+.box-content-panel,
+.nested-boxes-section,
+.box-items-dock,
+.category-header,
+.category-drag-frame,
+.category-drag-handle,
+.category-name,
+.uncategorized-notice,
+.uncategorized-notice button,
+.box-card,
+.box-image-shell,
+.box-content-photo,
+.box-content-photo-column,
+.box-content-tag-editor,
+.box-content-tag-body,
+.box-content-tag-input,
+.box-content-tag-toggle,
+.box-details input,
+.box-number-popup,
+.box-number-choice,
+.box-scale-select-wrap,
+.box-scale-toggle,
+.box-property-toggle-box,
+.box-scale-toggle-box,
+.delete-category,
+.insert-actions button,
+.bulk-actions button,
+.modal-panel,
+.box-create-photo-block img,
+.box-create-field input,
+.modal-actions button,
+.overlay-toolbar button,
+.overlay-box,
+.category-target,
+.lightbox-backdrop,
+.lightbox-image,
+.drag-ghost,
+.drag-ghost-box-icon,
+.drag-ghost-box-count {
+  background: var(--site-red) !important;
+  background-image: none !important;
 }
 
 

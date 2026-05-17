@@ -187,6 +187,17 @@
       return;
     }
 
+    if (["checkbox", "radio", "file", "hidden"].includes(input.type)) {
+      return;
+    }
+
+    if (!input.dataset.autosizeMin) {
+      const renderedWidth = Math.ceil(input.getBoundingClientRect().width);
+      if (renderedWidth > 0) {
+        input.dataset.autosizeMin = String(renderedWidth);
+      }
+    }
+
     const measure = getAutosizeMeasure();
     const computed = window.getComputedStyle(input);
     measure.style.font = computed.font;
@@ -212,10 +223,21 @@
     input.style.width = `${Math.max(minWidth, width)}px`;
   }
 
+  function autosizeStaticInputs() {
+    [itemSearchInput, boxCreateNameInput, boxCreateNumberInput]
+      .filter((input) => input instanceof HTMLInputElement && !input.closest("[hidden]"))
+      .forEach((input) => autosizeInput(input));
+  }
+
   function autosizeOrganizerInputs() {
     organizerList
       ?.querySelectorAll('[data-action="category-name"], [data-action="box-name"], [data-action="box-number"]')
       .forEach((input) => autosizeInput(input));
+  }
+
+  function autosizeManagedInputs() {
+    autosizeStaticInputs();
+    autosizeManagedInputs();
   }
 
   const findCategory = (categoryId) => state.categories.find((category) => category.id === categoryId);
@@ -1892,6 +1914,7 @@
     boxCreateNumberInput.value = String(peekNextBoxNumber());
     boxCreatePreview.src = PLACEHOLDER_IMAGE;
     setBoxDraftError("");
+    autosizeStaticInputs();
     requestAnimationFrame(() => {
       boxCreateNameInput.focus();
       boxCreateNameInput.select();
@@ -3220,6 +3243,10 @@
         }
       }
 
+      if (target === itemSearchInput || target === boxCreateNameInput || target === boxCreateNumberInput) {
+        autosizeInput(target);
+      }
+
       if (target.dataset.action === "box-scale") {
         const box = findBox(target.dataset.boxId);
         if (box) {
@@ -3463,6 +3490,7 @@
 
     window.addEventListener("scroll", updateScrollButtons, { passive: true });
     window.addEventListener("resize", () => {
+      autosizeManagedInputs();
       updateLayoutMetrics();
       updateScrollButtons();
     });
@@ -3577,6 +3605,7 @@
     setTheme(loadThemePreference());
     updateLayoutMetrics();
     renderOrganizer();
+    autosizeStaticInputs();
     updateScrollButtons();
   }
 
