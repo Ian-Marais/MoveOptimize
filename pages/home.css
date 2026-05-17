@@ -218,8 +218,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: calc(14px + env(safe-area-inset-top)) clamp(4px, 1vw, 10px) 14px clamp(4px, 1vw, 10px);
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) clamp(4px, 1vw, 10px) 10px clamp(4px, 1vw, 10px);
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 22px rgba(15, 34, 58, 0.08);
@@ -229,24 +229,24 @@ button {
 .app-toolbar > :first-child {
   min-width: 0;
   flex: 1 1 auto;
-  padding-right: 56px;
+  padding-right: 42px;
 }
 
 .app-toolbar h1 {
   margin: 0;
-  font-size: clamp(1.25rem, 2.4rem, 1.65rem);
+  font-size: clamp(0.94rem, 1.8rem, 1.24rem);
   line-height: 1.1;
   letter-spacing: 0;
 }
 
 .app-toolbar p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.66rem;
 }
 
 .category-duplicate-warning {
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--warning);
   font-weight: 700;
 }
@@ -254,32 +254,32 @@ button {
 .toolbar-search {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 9px;
 }
 
 .toolbar-search input {
-  flex: 0 1 110px;
-  max-width: 110px;
-  min-height: 42px;
-  padding: 0 12px;
+  flex: 0 1 83px;
+  max-width: 83px;
+  min-height: 32px;
+  padding: 0 9px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
 }
 
 .toolbar-search #itemSearchButton {
-  min-height: 42px;
-  padding: 0 14px;
+  min-height: 32px;
+  padding: 0 11px;
   border: 1px solid var(--blue);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--blue-soft);
   color: var(--blue-dark);
   font-weight: 700;
 }
 
 .toolbar-search .toolbar-action-button {
-  min-height: 42px;
+  min-height: 32px;
 }
 
 .search-status {
@@ -294,23 +294,21 @@ button {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
-  gap: 6px 12px;
+  gap: 4px 9px;
 }
 
 .toolbar-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
-  padding-top: 54px;
+  gap: 8px;
+  padding-top: 0;
 }
 
 .profile-button {
-  position: fixed;
-  top: calc(14px + env(safe-area-inset-top));
-  right: clamp(4px, 1vw, 10px);
-  z-index: 30;
+  position: static;
   display: inline-grid;
+  align-self: flex-end;
   place-items: center;
   width: 44px;
   min-width: 44px;
@@ -383,34 +381,35 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: fit-content;
   min-width: 0;
-  min-height: 36px;
+  min-height: 27px;
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.69rem;
   white-space: nowrap;
 }
 
 .toolbar-action-button {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
+  gap: 8px;
+  min-height: 33px;
+  padding: 0 11px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   color: var(--ink);
   font-weight: 700;
+  font-size: 0.75rem;
   box-shadow: 0 1px 3px rgba(20, 35, 55, 0.12);
   white-space: nowrap;
 }
 
 .toolbar-action-button i {
   color: var(--blue-dark);
-  font-size: 1rem;
+  font-size: 0.75rem;
 }
 
 .toolbar-action-button:focus-visible {
@@ -428,8 +427,8 @@ button {
 .toggle-track {
   position: relative;
   display: inline-flex;
-  width: 50px;
-  height: 28px;
+  width: 38px;
+  height: 21px;
   padding: 2px;
   border-radius: 999px;
   background: #8b9aab;
@@ -437,8 +436,8 @@ button {
 }
 
 .toggle-track span {
-  width: 24px;
-  height: 24px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 2px 7px rgba(18, 32, 48, 0.26);
@@ -450,7 +449,7 @@ button {
 }
 
 .category-toggle input:checked + .toggle-track span {
-  transform: translateX(22px);
+  transform: translateX(17px);
 }
 
 .workspace {
@@ -2048,11 +2047,11 @@ button {
   .toolbar-right {
     width: 100%;
     align-items: stretch;
-    padding-top: 22px;
+    padding-top: 0;
   }
 
   .profile-button {
-    right: max(4px, env(safe-area-inset-right));
+    align-self: flex-end;
   }
 
   .toolbar-toggles {
