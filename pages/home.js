@@ -231,7 +231,7 @@
 
   function autosizeOrganizerInputs() {
     organizerList
-      ?.querySelectorAll('[data-action="category-name"], [data-action="box-name"], [data-action="box-number"]')
+      ?.querySelectorAll('[data-action="box-name"], [data-action="box-number"]')
       .forEach((input) => autosizeInput(input));
   }
 
@@ -2321,10 +2321,12 @@
     insertRootRef(ref, targetIndex);
   }
 
-  function startPress(event, type, id) {
+  function startPress(event, type, id, options = {}) {
     if (event.button !== undefined && event.button !== 0) {
       return;
     }
+
+    const immediate = options.immediate === true;
 
     pressState = {
       type,
@@ -2332,8 +2334,12 @@
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      timer: window.setTimeout(() => beginDrag(event, type, id), LONG_PRESS_MS)
+      timer: immediate ? null : window.setTimeout(() => beginDrag(event, type, id), LONG_PRESS_MS)
     };
+
+    if (immediate) {
+      beginDrag(event, type, id);
+    }
   }
 
   function cancelPress() {
@@ -3192,7 +3198,6 @@
     root.addEventListener("input", (event) => {
       const target = event.target;
       if (target.dataset.action === "category-name") {
-        autosizeInput(target);
         const category = findCategory(target.dataset.categoryId);
         if (category) {
           category.name = target.value.trim() || "Untitled Category";
@@ -3390,7 +3395,7 @@
       const categoryDragHandle = event.target.closest(".category-drag-handle");
       if (categoryDragHandle) {
         event.preventDefault();
-        startPress(event, "category", categoryDragHandle.dataset.categoryId);
+        startPress(event, "category", categoryDragHandle.dataset.categoryId, { immediate: true });
         return;
       }
 
