@@ -1475,7 +1475,7 @@
 
     organizerList.innerHTML = hasContent
       ? `${currentViewBox ? "" : renderRootPathHeader()}${renderInsertLine({ scope: "root-start" }, { extraClass: "root-leading" })}${content}${renderInsertLine({ scope: "root-end" }, { forceActive: true, extraClass: "root-trailing" })}`
-      : `${emptyMessage}${renderEmptyRootInsertLines()}`;
+      : `${currentViewBox ? "" : renderRootPathHeader()}${emptyMessage}${renderEmptyRootInsertLines()}`;
     if (currentViewBox) {
       organizerList.innerHTML = content;
     }

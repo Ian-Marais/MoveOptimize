@@ -456,7 +456,7 @@ button {
 .workspace {
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 18px clamp(4px, 1vw, 12px) 128px;
+  padding: 0 clamp(4px, 1vw, 12px) 128px;
 }
 
 .workspace.box-view-active {
@@ -545,7 +545,7 @@ button {
 }
 
 .root-view-header {
-  margin: -18px calc(clamp(4px, 1vw, 12px) * -1) 0;
+  margin: -1px calc(clamp(4px, 1vw, 12px) * -1) 0;
   gap: 8px;
   padding: 7px clamp(16px, 4vw, 36px) 7px clamp(6px, 1.6vw, 14px);
   border-top: 0;
@@ -2120,7 +2120,7 @@ button {
 
 @media (min-width: 760px) {
   .workspace {
-    padding-top: 26px;
+    padding-top: 0;
   }
 
   .organizer-list {
